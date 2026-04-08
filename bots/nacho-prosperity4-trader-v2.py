@@ -34,7 +34,7 @@ class Trader:
         mid_price = (best_ask + best_bid) / 2.0
 
         # =========================================================================
-        # 2. MODELO DE REGRESIÓN: EL PREDICTOR DE SPOOFING (LA MAGIA)
+        # 2. MODELO DE REGRESIÓN: EL PREDICTOR DE SPOOFING
         # =========================================================================
         
         # A. Volumen del Nivel 1 (Inmediatez)
