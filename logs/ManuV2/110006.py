@@ -97,14 +97,13 @@ class Trader:
         return orders
 
     # ══════════════════════════════════════════════════════════════
-    #  INTARIAN_PEPPER_ROOT — Fixed accumulation
+    #  INTARIAN_PEPPER_ROOT — L1-only accumulation + tighter MM
     # ══════════════════════════════════════════════════════════════
-
+ 
     def trade_pepper(self, od: OrderDepth, pos: int, timestamp: int, data: dict):
         orders = []
         LIMIT = self.PEPPER_LIMIT
-
-        # FV tracking
+ 
         if "pepper_base" not in data:
             if od.buy_orders and od.sell_orders:
                 best_bid = max(od.buy_orders.keys())
@@ -113,70 +112,60 @@ class Trader:
                 data["pepper_base"] = mid - self.PEPPER_SLOPE * timestamp
             else:
                 return orders, data
-
+ 
         fv = data["pepper_base"] + self.PEPPER_SLOPE * timestamp
         fv_int = int(round(fv))
-
+ 
         buy_cap = LIMIT - pos
         sell_cap = LIMIT + pos
         accumulated = data.get("pepper_accumulated", False)
-
+ 
         if not accumulated:
-            # ── SMART ACCUMULATION ─────────────────────────────
-            # OLD: sweep ALL levels → pays 9-11 above FV on L2/L3
-            # NEW: only sweep L1 (best ask) + aggressive bid
-            #   - Saves ~200-400 pts on spread cost
-            #   - Fills in 5-8 ticks instead of 3 (misses <1 pt drift)
-            #   - Net: much better entry price
-
+            # Smart accumulation: L1 only + aggressive bid
             if buy_cap > 0 and od.sell_orders:
                 best_ask = min(od.sell_orders.keys())
-                # Only take L1: the best ask price
                 vol = min(-od.sell_orders[best_ask], buy_cap)
                 orders.append(Order(self.PEPPER, best_ask, vol))
                 buy_cap -= vol
-
-            # Aggressive passive bid: penny the best bid
+ 
             if buy_cap > 0:
                 if od.buy_orders:
                     best_bid = max(od.buy_orders.keys())
                     orders.append(Order(self.PEPPER, best_bid + 1, buy_cap))
                 else:
                     orders.append(Order(self.PEPPER, fv_int, buy_cap))
-
+ 
             if pos >= LIMIT:
                 data["pepper_accumulated"] = True
-
+ 
         else:
-            # ── HOLDING PHASE ──────────────────────────────────
+            # Holding: aggressive rebuy + tighter MM
             if buy_cap > 0:
-                # Aggressive rebuy: sweep L1 if near FV
                 if od.sell_orders:
                     best_ask = min(od.sell_orders.keys())
-                    if best_ask <= fv_int + 2:
+                    if best_ask <= fv_int + 3:
                         vol = min(-od.sell_orders[best_ask], buy_cap)
                         orders.append(Order(self.PEPPER, best_ask, vol))
                         buy_cap -= vol
-
-                # Passive penny bid for remainder
+ 
                 if buy_cap > 0 and od.buy_orders:
                     best_bid = max(od.buy_orders.keys())
                     our_bid = min(best_bid + 1, fv_int)
                     orders.append(Order(self.PEPPER, our_bid, buy_cap))
-
-            # Sell-side MM
+ 
+            # Sell-side MM — tighter floor (2 instead of 3)
             if pos >= self.PEPPER_MM_MIN_POS:
                 if od.sell_orders:
                     best_ask = min(od.sell_orders.keys())
                 else:
                     best_ask = fv_int + 8
-
+ 
                 mm_ask = max(best_ask - 1, fv_int + self.PEPPER_MM_ASK_FLOOR)
                 available = pos - self.PEPPER_MM_MIN_POS
                 mm_vol = min(available, self.PEPPER_MM_MAX_VOL)
-
+ 
                 if mm_vol > 0 and sell_cap > 0:
                     mm_vol = min(mm_vol, sell_cap)
                     orders.append(Order(self.PEPPER, mm_ask, -mm_vol))
-
+ 
         return orders, data
