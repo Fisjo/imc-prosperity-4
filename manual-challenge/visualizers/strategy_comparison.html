@@ -1,0 +1,211 @@
+
+<style>
+  .card { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .card-title { font-size: 13px; font-weight: 500; color: var(--color-text-secondary); margin-bottom: 0.75rem; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 0.6rem 0.9rem; }
+  .stat-label { font-size: 11px; color: var(--color-text-tertiary); }
+  .stat-val { font-size: 18px; font-weight: 500; }
+  .ok { color: #1D9E75; }
+  .warn { color: #E24B4A; }
+  .amber { color: #BA7517; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td, th { padding: 7px 8px; border-bottom: 0.5px solid var(--color-border-tertiary); text-align: right; }
+  th { font-weight: 500; color: var(--color-text-secondary); font-size: 12px; }
+  td:first-child, th:first-child { text-align: left; }
+  .best { color: #1D9E75; font-weight: 500; }
+  .pill { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 20px; }
+  .pill-ok { background: #E1F5EE; color: #0F6E56; }
+  .pill-warn { background: #FCEBEB; color: #A32D2D; }
+  .pill-amber { background: #FAEEDA; color: #854F0B; }
+</style>
+
+<h2 class="sr-only">Comparison of two investment strategies for the Invest and Expand challenge</h2>
+
+<div style="padding: 1rem 0;">
+
+<div class="card">
+  <div class="card-title">Strategy comparison at a glance</div>
+  <table>
+    <thead><tr><th>Parameter</th><th>My strategy</th><th>Teammate's model</th><th>Δ</th></tr></thead>
+    <tbody>
+      <tr><td>Research</td><td>70%</td><td>~13%</td><td class="warn">−57pp</td></tr>
+      <tr><td>Scale</td><td>25%</td><td>~39%</td><td class="ok">+14pp</td></tr>
+      <tr><td>Speed</td><td>5%</td><td>~48%</td><td class="warn">+43pp</td></tr>
+      <tr><td>Speed assumption</td><td>Qualitative</td><td>Gaussian crowd @40%</td><td>—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card" id="simCard">
+  <div class="card-title">Live PnL comparison — drag to explore crowd Speed median</div>
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1rem;">
+    <span style="font-size: 13px; color: var(--color-text-secondary);">Crowd median Speed</span>
+    <input type="range" min="10" max="70" step="1" value="40" id="crowdSlider" style="flex:1">
+    <span style="font-size: 14px; font-weight: 500; min-width: 36px;" id="crowdVal">40%</span>
+  </div>
+  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 1.5rem;">
+    <span style="font-size: 13px; color: var(--color-text-secondary);">Spread (σ)</span>
+    <input type="range" min="2" max="20" step="1" value="8" id="spreadSlider" style="flex:1">
+    <span style="font-size: 14px; font-weight: 500; min-width: 36px;" id="spreadVal">8%</span>
+  </div>
+
+  <div class="grid2" style="margin-bottom: 1.5rem;">
+    <div class="stat">
+      <div class="stat-label">My strategy PnL</div>
+      <div class="stat-val ok" id="myPnl">—</div>
+      <div style="font-size:11px; color: var(--color-text-tertiary);">R=70% S=25% Sp=5%</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Teammate's PnL</div>
+      <div class="stat-val amber" id="tmPnl">—</div>
+      <div style="font-size:11px; color: var(--color-text-tertiary);">R=13% S=39% Sp=48%</div>
+    </div>
+  </div>
+
+  <div style="margin-bottom: 0.5rem; font-size: 12px; color: var(--color-text-secondary);">Speed multipliers at current settings</div>
+  <div class="grid2" style="margin-bottom:1.5rem;">
+    <div class="stat">
+      <div class="stat-label">My speed mult (5% invest)</div>
+      <div class="stat-val" id="myMult">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Teammate speed mult (48%)</div>
+      <div class="stat-val" id="tmMult">—</div>
+    </div>
+  </div>
+
+  <div style="position: relative; height: 240px;">
+    <canvas id="sensitChart" role="img" aria-label="PnL comparison across crowd speed assumptions">PnL vs crowd speed median</canvas>
+  </div>
+  <div id="verdict" style="margin-top:1rem; font-size:13px; padding: 0.75rem 1rem; border-radius: var(--border-radius-md); background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary);"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">Research math verification — where does ~13% come from?</div>
+  <div style="font-size: 13px; color: var(--color-text-secondary); margin-bottom: 0.75rem;">
+    Teammate's optimizer finds Research% by maximizing <code>ln(1+x)·(C−x)</code> where C = remaining budget after Speed. At C≈52%, the calculus gives:
+  </div>
+  <table>
+    <thead><tr><th>C (remaining)</th><th>Optimal Research%</th><th>Optimal Scale%</th><th>Research output</th></tr></thead>
+    <tbody id="mathTable"></tbody>
+  </table>
+  <div style="font-size:11px; color: var(--color-text-tertiary); margin-top: 8px;">
+    The R≈13% comes from a large C being split very unevenly — Scale wins because it multiplies linearly against a log-curve that flattens fast.
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+let chartInst = null;
+
+function normCdf(x, mu, sigma) {
+  const z = (x - mu) / (sigma * Math.sqrt(2));
+  return 0.5 * (1 + erf(z));
+}
+function erf(x) {
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x);
+  const t = 1/(1+p*x);
+  const y = 1 - ((((a5*t+a4)*t+a3)*t+a2)*t+a1)*t*Math.exp(-x*x);
+  return sign*y;
+}
+function speedMult(sp, mu, sigma) {
+  const perc = normCdf(sp, mu, sigma);
+  return 0.1 + 0.8 * perc;
+}
+function research(x) { return 200000 * Math.log(1+x) / Math.log(101); }
+function calcPnl(r, s, sp, mu, sigma) {
+  const total = r + s + sp;
+  if (total > 100) return -Infinity;
+  const used = total / 100 * 50000;
+  const mult = speedMult(sp, mu, sigma);
+  return research(r) * (7*s/100) * mult - used;
+}
+
+function optimalRS(C) {
+  let best = -Infinity, bx = 0;
+  for (let x = 0; x <= C; x += 0.1) {
+    const v = Math.log(1+x) * (C-x);
+    if (v > best) { best = v; bx = x; }
+  }
+  return bx;
+}
+
+function update() {
+  const mu = +document.getElementById('crowdSlider').value;
+  const sigma = +document.getElementById('spreadSlider').value;
+  document.getElementById('crowdVal').textContent = mu + '%';
+  document.getElementById('spreadVal').textContent = sigma + '%';
+
+  const myR = 70, myS = 25, mySp = 5;
+  const tmR = 13.22, tmS = 37.73, tmSp = 49.05;
+
+  const myP = calcPnl(myR, myS, mySp, mu, sigma);
+  const tmP = calcPnl(tmR, tmS, tmSp, mu, sigma);
+
+  document.getElementById('myPnl').textContent = Math.round(myP).toLocaleString() + ' XIRECs';
+  document.getElementById('tmPnl').textContent = Math.round(tmP).toLocaleString() + ' XIRECs';
+
+  const myM = speedMult(mySp, mu, sigma);
+  const tmM = speedMult(tmSp, mu, sigma);
+  document.getElementById('myMult').textContent = myM.toFixed(3) + '×';
+  document.getElementById('tmMult').textContent = tmM.toFixed(3) + '×';
+
+  const diff = tmP - myP;
+  const verdictEl = document.getElementById('verdict');
+  if (Math.abs(diff) < 5000) {
+    verdictEl.innerHTML = '<span class="pill pill-amber">Too close to call</span> Both strategies within 5K XIRECs at these settings.';
+  } else if (diff > 0) {
+    verdictEl.innerHTML = '<span class="pill pill-ok">Teammate leads</span> His model wins by <strong>' + Math.round(diff).toLocaleString() + '</strong> XIRECs at crowd median=' + mu + '%.';
+  } else {
+    verdictEl.innerHTML = '<span class="pill pill-warn">My strategy leads</span> Leads by <strong>' + Math.round(-diff).toLocaleString() + '</strong> XIRECs at crowd median=' + mu + '%.';
+  }
+
+  const labels = [];
+  const myData = [], tmData = [];
+  for (let m = 10; m <= 70; m += 2) {
+    labels.push(m + '%');
+    myData.push(Math.round(calcPnl(myR, myS, mySp, m, sigma)));
+    tmData.push(Math.round(calcPnl(tmR, tmS, tmSp, m, sigma)));
+  }
+
+  if (chartInst) chartInst.destroy();
+  chartInst = new Chart(document.getElementById('sensitChart'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'My strategy (R70/S25/Sp5)', data: myData, borderColor: '#1D9E75', backgroundColor: 'transparent', pointRadius: 0, tension: 0.3 },
+        { label: "Teammate (R13/S39/Sp48)", data: tmData, borderColor: '#7F77DD', backgroundColor: 'transparent', pointRadius: 0, tension: 0.3, borderDash: [5,3] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: true, labels: { boxWidth: 10, font: { size: 11 } } } },
+      scales: {
+        x: { title: { display: true, text: 'Crowd Speed median', font: { size: 11 } }, ticks: { font: { size: 9 }, maxTicksLimit: 10 } },
+        y: { ticks: { font: { size: 10 }, callback: v => v >= 1000000 ? (v/1e6).toFixed(1)+'M' : v >= 1000 ? Math.round(v/1000)+'K' : v } }
+      }
+    }
+  });
+
+  const tbody = document.getElementById('mathTable');
+  tbody.innerHTML = '';
+  [30, 40, 52, 60, 80, 90].forEach(C => {
+    const rx = optimalRS(C);
+    const sy = C - rx;
+    const tr = document.createElement('tr');
+    const res = Math.round(200000 * Math.log(1+rx)/Math.log(101));
+    tr.innerHTML = `<td>${C}%</td><td>${rx.toFixed(1)}%</td><td>${sy.toFixed(1)}%</td><td>${res.toLocaleString()}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+update();
+document.getElementById('crowdSlider').addEventListener('input', update);
+document.getElementById('spreadSlider').addEventListener('input', update);
+</script>

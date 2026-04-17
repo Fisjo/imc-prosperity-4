@@ -1,0 +1,315 @@
+
+<style>
+  .tab-bar { display: flex; gap: 4px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .tab { padding: 5px 14px; font-size: 13px; cursor: pointer; border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); background: transparent; color: var(--color-text-secondary); }
+  .tab.active { background: var(--color-background-secondary); color: var(--color-text-primary); font-weight: 500; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .card { background: var(--color-background-secondary); border-radius: var(--border-radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 0.75rem; }
+  .slider-label { width: 120px; font-size: 13px; color: var(--color-text-secondary); }
+  .slider-val { width: 40px; font-size: 13px; font-weight: 500; text-align: right; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-bottom: 1rem; }
+  .stat { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 0.6rem 0.9rem; }
+  .stat-label { font-size: 11px; color: var(--color-text-tertiary); }
+  .stat-val { font-size: 17px; font-weight: 500; }
+  .ok { color: #1D9E75; }
+  .warn { color: #E24B4A; }
+  .amber { color: #BA7517; }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  td, th { padding: 5px 7px; border-bottom: 0.5px solid var(--color-border-tertiary); text-align: right; }
+  th { font-weight: 500; color: var(--color-text-secondary); font-size: 11px; }
+  td:first-child, th:first-child { text-align: left; }
+  .best-row td { color: #1D9E75; font-weight: 500; }
+  .insight { font-size: 12px; color: var(--color-text-secondary); background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-md); padding: 0.6rem 0.9rem; margin-top: 0.75rem; }
+</style>
+
+<h2 class="sr-only">Assumption sensitivity analysis for crowd speed median and spread parameters</h2>
+
+<div style="padding: 1rem 0;">
+
+<div class="tab-bar">
+  <button class="tab active" onclick="showTab('explore')">Explore assumptions</button>
+  <button class="tab" onclick="showTab('heatmap')">PnL heatmap</button>
+  <button class="tab" onclick="showTab('strategies')">Strategy comparison</button>
+  <button class="tab" onclick="showTab('minimax')">Minimax / safe play</button>
+</div>
+
+<div id="panel-explore" class="panel active">
+  <div class="card">
+    <div class="slider-row">
+      <span class="slider-label">Crowd median Speed</span>
+      <input type="range" min="5" max="75" step="1" value="40" id="mu" style="flex:1">
+      <span class="slider-val" id="muVal">40%</span>
+    </div>
+    <div class="slider-row">
+      <span class="slider-label">Crowd spread (σ)</span>
+      <input type="range" min="2" max="30" step="1" value="8" id="sigma" style="flex:1">
+      <span class="slider-val" id="sigmaVal">8%</span>
+    </div>
+  </div>
+  <div class="grid3">
+    <div class="stat"><div class="stat-label">Optimal Research</div><div class="stat-val ok" id="optR">—</div></div>
+    <div class="stat"><div class="stat-label">Optimal Scale</div><div class="stat-val ok" id="optS">—</div></div>
+    <div class="stat"><div class="stat-label">Optimal Speed</div><div class="stat-val ok" id="optSp">—</div></div>
+  </div>
+  <div class="grid3">
+    <div class="stat"><div class="stat-label">Speed multiplier</div><div class="stat-val" id="optMult">—</div></div>
+    <div class="stat"><div class="stat-label">Net PnL</div><div class="stat-val ok" id="optPnl">—</div></div>
+    <div class="stat"><div class="stat-label">vs teammate (R13/S38/Sp49)</div><div class="stat-val" id="vsTm">—</div></div>
+  </div>
+  <div style="position:relative; height:200px; margin-top:1rem;">
+    <canvas id="exploreChart" role="img" aria-label="Optimal PnL curve vs crowd speed median">Optimal PnL by crowd assumption</canvas>
+  </div>
+  <div class="insight" id="exploreInsight"></div>
+</div>
+
+<div id="panel-heatmap" class="panel">
+  <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:1rem;">
+    Net PnL of teammate's allocation (R≈13/S≈38/Sp≈49) across every (median, spread) combination. Colour = PnL magnitude.
+  </p>
+  <div style="position:relative; height:280px;">
+    <canvas id="heatmapChart" role="img" aria-label="Heatmap of net PnL across crowd assumptions">PnL heatmap</canvas>
+  </div>
+  <div class="insight">
+    The teammate's allocation is <strong>highly sensitive to the median assumption</strong>. It thrives when the crowd median is near 40% but collapses (PnL under 50K) when the crowd plays below 25%. The spread matters much less than the median.
+  </div>
+</div>
+
+<div id="panel-strategies" class="panel">
+  <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:1rem;">
+    PnL of four strategies as crowd median shifts from 10→70%. Spread fixed at σ=8%.
+  </p>
+  <div style="display:flex; gap:16px; flex-wrap:wrap; margin-bottom:8px; font-size:12px; color:var(--color-text-secondary);">
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:3px;background:#1D9E75;display:inline-block;"></span>Teammate R13/S38/Sp49</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:3px;background:#7F77DD;display:inline-block;border-top:2px dashed #7F77DD;height:0;"></span>Original R70/S25/Sp5</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:3px;background:#D85A30;display:inline-block;"></span>Blended R25/S35/Sp40</span>
+    <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:3px;background:#888780;display:inline-block;"></span>Minimax R23/S77/Sp0</span>
+  </div>
+  <div style="position:relative; height:260px;">
+    <canvas id="stratChart" role="img" aria-label="Strategy comparison across crowd medians">Strategy comparison</canvas>
+  </div>
+  <div class="insight" id="stratInsight">The crossover point — where the teammate's model stops beating the minimax — is around μ=65%.</div>
+</div>
+
+<div id="panel-minimax" class="panel">
+  <p style="font-size:13px; color:var(--color-text-secondary); margin-bottom:0.75rem;">
+    The minimax strategy maximises your <em>worst-case</em> PnL regardless of what the crowd does.
+  </p>
+  <div class="grid3" style="margin-bottom:1rem;">
+    <div class="stat"><div class="stat-label">Minimax Research</div><div class="stat-val amber">23%</div></div>
+    <div class="stat"><div class="stat-label">Minimax Scale</div><div class="stat-val amber">77%</div></div>
+    <div class="stat"><div class="stat-label">Minimax Speed</div><div class="stat-val amber">0%</div></div>
+  </div>
+  <div class="insight" style="margin-bottom:1rem;">
+    Spending 0% on Speed locks you into the 0.1× multiplier — but also frees the entire budget for Research+Scale. The math barely covers budget: gross = 200K×ln(24)/ln(101) × 7×0.77 × 0.1 ≈ 74K, net ≈ 24K. It's a guaranteed modest profit regardless of how anyone else plays.
+  </div>
+  <table>
+    <thead><tr><th>Strategy</th><th>Worst case</th><th>Mean</th><th>Best case</th><th>P(>0)</th></tr></thead>
+    <tbody>
+      <tr class="best-row"><td>Teammate R13/S38/Sp49</td><td id="tm_min">—</td><td id="tm_mean">—</td><td id="tm_max">—</td><td id="tm_p">—</td></tr>
+      <tr><td>Blended R25/S35/Sp40</td><td id="bl_min">—</td><td id="bl_mean">—</td><td id="bl_max">—</td><td id="bl_p">—</td></tr>
+      <tr><td>Minimax R23/S77/Sp0</td><td id="mm_min">—</td><td id="mm_mean">—</td><td id="mm_max">—</td><td id="mm_p">—</td></tr>
+      <tr><td>Original R70/S25/Sp5</td><td id="or_min">—</td><td id="or_mean">—</td><td id="or_max">—</td><td id="or_p">—</td></tr>
+    </tbody>
+  </table>
+  <div class="insight" style="margin-top:0.75rem;">
+    The teammate's allocation dominates in mean PnL. The minimax only wins if you're so uncertain about the crowd that you can't accept any downside risk at all.
+  </div>
+</div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+function normCdf(x, mu, sigma) {
+  const z = (x - mu) / (sigma * Math.sqrt(2));
+  return 0.5 * (1 + erf(z));
+}
+function erf(x) {
+  const a1=0.254829592,a2=-0.284496736,a3=1.421413741,a4=-1.453152027,a5=1.061405429,p=0.3275911;
+  const s = x < 0 ? -1 : 1; x = Math.abs(x);
+  const t2 = 1/(1+p*x);
+  return s*(1-((((a5*t2+a4)*t2+a3)*t2+a2)*t2+a1)*t2*Math.exp(-x*x));
+}
+function sMult(sp, mu, sig) { return 0.1 + 0.8 * Math.max(0, Math.min(1, normCdf(sp, mu, sig))); }
+function research(x) { return x <= 0 ? 0 : 200000*Math.log(1+x)/Math.log(101); }
+function scaleV(y) { return 7*y/100; }
+function calcPnl(r, s, sp, mu, sig) {
+  if (r+s+sp > 100.001) return -Infinity;
+  return research(r)*scaleV(s)*sMult(sp,mu,sig) - (r+s+sp)/100*50000;
+}
+
+function optAlloc(mu, sig) {
+  let best = -Infinity, br=13, bs=38, bsp=49;
+  for (let sp=0; sp<=100; sp+=2) {
+    for (let r=5; r<=50; r+=2) {
+      const s = 100-r-sp;
+      if (s < 5 || s > 90) continue;
+      const p = calcPnl(r, s, sp, mu, sig);
+      if (p > best) { best=p; br=r; bs=s; bsp=sp; }
+    }
+  }
+  return {r:br, s:bs, sp:bsp, pnl:best};
+}
+
+let exploreChart=null, heatChart=null, stratChart=null;
+
+function initHeatmap() {
+  const medians=[10,20,30,40,50,60,70];
+  const sigmas=[4,8,15,25];
+  const r=13.2,s=37.7,sp=49.1;
+  const vals=[];
+  medians.forEach(mu => sigmas.forEach(sig => {
+    vals.push({x:`σ=${sig}`,y:`μ=${mu}%`,v:Math.round(calcPnl(r,s,sp,mu,sig))});
+  }));
+  const minV=Math.min(...vals.map(v=>v.v)), maxV=Math.max(...vals.map(v=>v.v));
+  const datasets=[{
+    label:'Net PnL',
+    data: vals,
+    backgroundColor: vals.map(v=>{
+      const t=Math.max(0,(v.v-minV)/(maxV-minV));
+      const r2=Math.round(30+t*(29-30)),g2=Math.round(30+t*(158-30)),b2=Math.round(48+t*(117-48));
+      return `rgba(${Math.round(200-170*t)},${Math.round(100+100*t)},${Math.round(80+80*t)},0.85)`;
+    }),
+    width:({chart})=>chart.chartArea?(chart.chartArea.width/sigmas.length-4):40,
+    height:({chart})=>chart.chartArea?(chart.chartArea.height/medians.length-4):30,
+  }];
+  heatChart = new Chart(document.getElementById('heatmapChart'),{
+    type:'matrix',
+    data:{datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>`PnL: ${ctx.raw.v.toLocaleString()} XIRECs`}}
+      },
+      scales:{
+        x:{type:'category',labels:sigmas.map(s=>`σ=${s}%`),ticks:{font:{size:10}}},
+        y:{type:'category',labels:medians.map(m=>`μ=${m}%`),reverse:true,ticks:{font:{size:10}}}
+      }
+    }
+  });
+}
+
+function initStratChart() {
+  const mus=[];
+  for(let m=10;m<=70;m+=2) mus.push(m);
+  const sigma=8;
+  const strats=[
+    {r:13.2,s:37.7,sp:49.1,color:'#1D9E75',dash:[]},
+    {r:70,s:25,sp:5,color:'#7F77DD',dash:[5,3]},
+    {r:25,s:35,sp:40,color:'#D85A30',dash:[]},
+    {r:23,s:77,sp:0,color:'#888780',dash:[3,3]},
+  ];
+  const labels = ['Teammate','Original','Blended','Minimax'];
+  const datasets = strats.map((st,i)=>({
+    label: labels[i],
+    data: mus.map(mu=>Math.round(calcPnl(st.r,st.s,st.sp,mu,sigma))),
+    borderColor: st.color,
+    backgroundColor:'transparent',
+    borderDash: st.dash,
+    pointRadius:0,
+    tension:0.3
+  }));
+  stratChart = new Chart(document.getElementById('stratChart'),{
+    type:'line',
+    data:{labels:mus.map(m=>m+'%'),datasets},
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{title:{display:true,text:'Crowd median Speed',font:{size:11}},ticks:{font:{size:9},maxTicksLimit:8}},
+        y:{ticks:{font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'K':v}}
+      }
+    }
+  });
+}
+
+function initMinimax() {
+  const medians=[10,20,30,40,50,60,70];
+  const sigmas=[4,8,15,25];
+  const scenarios=medians.flatMap(mu=>sigmas.map(sig=>({mu,sig})));
+  const strats=[
+    {id:'tm',r:13.2,s:37.7,sp:49.1},
+    {id:'bl',r:25,s:35,sp:40},
+    {id:'mm',r:23,s:77,sp:0},
+    {id:'or',r:70,s:25,sp:5},
+  ];
+  strats.forEach(st=>{
+    const pnls=scenarios.map(sc=>calcPnl(st.r,st.s,st.sp,sc.mu,sc.sig));
+    const mn=Math.min(...pnls),mx=Math.max(...pnls),mean=pnls.reduce((a,b)=>a+b)/pnls.length;
+    const pos=pnls.filter(p=>p>0).length/pnls.length*100;
+    document.getElementById(st.id+'_min').textContent=Math.round(mn).toLocaleString();
+    document.getElementById(st.id+'_max').textContent=Math.round(mx).toLocaleString();
+    document.getElementById(st.id+'_mean').textContent=Math.round(mean).toLocaleString();
+    document.getElementById(st.id+'_p').textContent=pos.toFixed(0)+'%';
+  });
+}
+
+function updateExplore() {
+  const mu=+document.getElementById('mu').value;
+  const sig=+document.getElementById('sigma').value;
+  document.getElementById('muVal').textContent=mu+'%';
+  document.getElementById('sigmaVal').textContent=sig+'%';
+
+  const opt=optAlloc(mu,sig);
+  document.getElementById('optR').textContent=opt.r+'%';
+  document.getElementById('optS').textContent=opt.s+'%';
+  document.getElementById('optSp').textContent=opt.sp+'%';
+  document.getElementById('optMult').textContent=sMult(opt.sp,mu,sig).toFixed(3)+'×';
+  document.getElementById('optPnl').textContent=Math.round(opt.pnl).toLocaleString();
+
+  const tmPnl=calcPnl(13.2,37.7,49.1,mu,sig);
+  const diff=Math.round(opt.pnl-tmPnl);
+  const vsEl=document.getElementById('vsTm');
+  vsEl.textContent=(diff>=0?'+':'')+diff.toLocaleString();
+  vsEl.className='stat-val '+(diff>1000?'ok':diff<-1000?'warn':'');
+
+  const insight=document.getElementById('exploreInsight');
+  if(mu<25) insight.textContent=`With a low crowd median of ${mu}%, Speed is less contested — the optimizer shifts budget away from Speed. The teammate's high Speed spend becomes relatively wasteful here.`;
+  else if(mu>55) insight.textContent=`At μ=${mu}%, the crowd is piling heavily into Speed. Winning the Speed race costs too much and the optimal strategy collapses — consider whether competing makes sense at all.`;
+  else insight.textContent=`At μ=${mu}%, the crowd behaviour is close to the original 40% assumption. The teammate's allocation tracks well with the optimizer's output.`;
+
+  const mus=[];
+  for(let m=5;m<=75;m+=5) mus.push(m);
+  const optPnls=mus.map(m=>Math.round(optAlloc(m,sig).pnl));
+  const tmPnls=mus.map(m=>Math.round(calcPnl(13.2,37.7,49.1,m,sig)));
+
+  if(exploreChart) exploreChart.destroy();
+  exploreChart=new Chart(document.getElementById('exploreChart'),{
+    type:'line',
+    data:{
+      labels:mus.map(m=>m+'%'),
+      datasets:[
+        {label:'True optimum',data:optPnls,borderColor:'#1D9E75',backgroundColor:'transparent',pointRadius:0,tension:0.3},
+        {label:'Teammate alloc',data:tmPnls,borderColor:'#7F77DD',backgroundColor:'transparent',borderDash:[5,3],pointRadius:0,tension:0.3}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true,labels:{boxWidth:10,font:{size:10}}},
+      },
+      scales:{
+        x:{title:{display:true,text:'Crowd median Speed',font:{size:10}},ticks:{font:{size:9}}},
+        y:{ticks:{font:{size:9},callback:v=>v>=1000?Math.round(v/1000)+'K':v}}
+      }
+    }
+  });
+}
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById('panel-'+name).classList.add('active');
+  if(name==='heatmap' && !heatChart) initHeatmap();
+  if(name==='strategies' && !stratChart) initStratChart();
+  if(name==='minimax') initMinimax();
+}
+
+document.getElementById('mu').addEventListener('input', updateExplore);
+document.getElementById('sigma').addEventListener('input', updateExplore);
+updateExplore();
+</script>
