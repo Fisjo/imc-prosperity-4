@@ -9,7 +9,7 @@
 | Round | Algo | Manual | Global rank | Spain rank |
 |-------|------|--------|-------------|------------|
 | Tutorial | 2562 | - | **416** (Unofficial) | - |
-| Round 1 | 102763 | 87995 | **177** | **5** (top 0.8%) |
+| Round 1 | 102763 | 87995 | **177** (top 0.8%)| **5**  |
 | Round 2 | Empty trader (strategic) | **24233**  (minimax) | **3882** | **32** |
 
 - Reached **global #2** for a full day during the First Round.
