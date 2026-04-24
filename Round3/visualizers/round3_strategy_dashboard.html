@@ -1,0 +1,289 @@
+
+<style>
+  .section { margin: 0 0 24px; }
+  .section-title { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-tertiary); margin: 0 0 10px; }
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 14px 18px; }
+  .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .metric { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 12px 14px; }
+  .metric-label { font-size: 12px; color: var(--color-text-secondary); margin: 0 0 4px; }
+  .metric-value { font-size: 22px; font-weight: 500; margin: 0; }
+  .metric-sub { font-size: 11px; color: var(--color-text-tertiary); margin: 4px 0 0; }
+  .strategy-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .strat-card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: var(--border-radius-lg); padding: 14px 18px; }
+  .strat-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .strat-name { font-size: 14px; font-weight: 500; margin: 0; }
+  .strat-type { font-size: 11px; padding: 2px 8px; border-radius: 4px; font-weight: 500; }
+  .badge-mm { background: var(--color-background-info); color: var(--color-text-info); }
+  .badge-opt { background: var(--color-background-success); color: var(--color-text-success); }
+  .badge-skip { background: var(--color-background-secondary); color: var(--color-text-tertiary); }
+  .strat-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .strat-row:last-child { border-bottom: none; }
+  .strat-row span:first-child { color: var(--color-text-secondary); }
+  .strat-row span:last-child { font-weight: 500; }
+  .voucher-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .voucher-table th { font-size: 11px; font-weight: 500; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; padding: 4px 10px; text-align: left; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .voucher-table td { padding: 6px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-primary); }
+  .voucher-table tr:last-child td { border-bottom: none; }
+  .tag { display: inline-block; font-size: 10px; padding: 1px 6px; border-radius: 3px; font-weight: 500; }
+  .itm { background: var(--color-background-info); color: var(--color-text-info); }
+  .atm { background: var(--color-background-success); color: var(--color-text-success); }
+  .otm { background: var(--color-background-warning); color: var(--color-text-warning); }
+  .skip { background: var(--color-background-secondary); color: var(--color-text-tertiary); }
+  .bar-bg { height: 6px; background: var(--color-background-secondary); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 6px; border-radius: 3px; transition: width 0.4s; }
+  .flow-row { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); margin: 6px 0; }
+  .flow-box { background: var(--color-background-secondary); border: 0.5px solid var(--color-border-tertiary); border-radius: 4px; padding: 3px 8px; font-size: 12px; color: var(--color-text-primary); white-space: nowrap; }
+  .arrow { color: var(--color-text-tertiary); font-size: 14px; }
+</style>
+
+<h2 class="sr-only">Round 3 trading strategy dashboard for GOAT competition</h2>
+
+<div style="padding: 4px 0 20px;">
+
+  <div class="section">
+    <div class="section-title">Round 3 snapshot</div>
+    <div class="metric-grid">
+      <div class="metric">
+        <div class="metric-label">TTE at start</div>
+        <div class="metric-value">5 days</div>
+        <div class="metric-sub">Options expire in 5 rounds</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Consensus IV</div>
+        <div class="metric-value">~24%</div>
+        <div class="metric-sub">Stable across all strikes</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">VEV spot range</div>
+        <div class="metric-value">~5250</div>
+        <div class="metric-sub">Spread ≈ 5 ticks</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Tradeable products</div>
+        <div class="metric-value">9 / 12</div>
+        <div class="metric-sub">Skip VEV 6000, 6500</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Per-product strategy</div>
+    <div class="strategy-grid">
+      <div class="strat-card">
+        <div class="strat-header">
+          <p class="strat-name">HYDROGEL_PACK</p>
+          <span class="strat-type badge-mm">Market Make</span>
+        </div>
+        <div class="strat-row"><span>Fair value</span><span>10,000</span></div>
+        <div class="strat-row"><span>Market spread</span><span>~16 ticks</span></div>
+        <div class="strat-row"><span>Our half-spread</span><span>±4 ticks</span></div>
+        <div class="strat-row"><span>Position limit</span><span>200</span></div>
+        <div class="strat-row"><span>Mean reversion β</span><span>−0.003/tick</span></div>
+        <div class="strat-row"><span>Edge per unit</span><span>~4 ticks</span></div>
+      </div>
+      <div class="strat-card">
+        <div class="strat-header">
+          <p class="strat-name">VELVETFRUIT_EXTRACT</p>
+          <span class="strat-type badge-mm">MM + Delta Hedge</span>
+        </div>
+        <div class="strat-row"><span>Fair value</span><span>Mid EMA</span></div>
+        <div class="strat-row"><span>Market spread</span><span>~5 ticks</span></div>
+        <div class="strat-row"><span>Our half-spread</span><span>±3 ticks</span></div>
+        <div class="strat-row"><span>Position limit</span><span>200</span></div>
+        <div class="strat-row"><span>Autocorrelation</span><span>0.998 / tick</span></div>
+        <div class="strat-row"><span>Secondary role</span><span>Option delta hedge</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Options pricing & action (TTE = 5, VEV ≈ 5250, IV = 24%)</div>
+    <div class="card">
+      <table class="voucher-table">
+        <thead>
+          <tr>
+            <th>Voucher</th>
+            <th>BS Fair Value</th>
+            <th>Delta</th>
+            <th>Mkt Spread</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>VEV_4000</td>
+            <td>~1250</td>
+            <td>1.000</td>
+            <td>n/a</td>
+            <td><span class="tag skip">Skip (parity only)</span></td>
+          </tr>
+          <tr>
+            <td>VEV_4500</td>
+            <td>~750</td>
+            <td>1.000</td>
+            <td>n/a</td>
+            <td><span class="tag skip">Skip (parity only)</span></td>
+          </tr>
+          <tr>
+            <td>VEV_5000</td>
+            <td>252</td>
+            <td>0.96</td>
+            <td>6</td>
+            <td><span class="tag itm">MM active</span></td>
+          </tr>
+          <tr>
+            <td>VEV_5100</td>
+            <td>161</td>
+            <td>0.85</td>
+            <td>4</td>
+            <td><span class="tag itm">MM active</span></td>
+          </tr>
+          <tr>
+            <td>VEV_5200</td>
+            <td>87</td>
+            <td>0.64</td>
+            <td>3</td>
+            <td><span class="tag atm">MM active</span></td>
+          </tr>
+          <tr>
+            <td>VEV_5300</td>
+            <td>37</td>
+            <td>0.37</td>
+            <td>2</td>
+            <td><span class="tag atm">MM active (high IV ~24.7%)</span></td>
+          </tr>
+          <tr>
+            <td>VEV_5400</td>
+            <td>12</td>
+            <td>0.16</td>
+            <td>1-2</td>
+            <td><span class="tag otm">MM active (most liquid)</span></td>
+          </tr>
+          <tr>
+            <td>VEV_5500</td>
+            <td>3</td>
+            <td>0.05</td>
+            <td>1</td>
+            <td><span class="tag otm">MM active (most liquid)</span></td>
+          </tr>
+          <tr>
+            <td>VEV_6000</td>
+            <td>~0</td>
+            <td>0.000</td>
+            <td>bid=0/ask=1</td>
+            <td><span class="tag skip">Skip (no edge)</span></td>
+          </tr>
+          <tr>
+            <td>VEV_6500</td>
+            <td>~0</td>
+            <td>0.000</td>
+            <td>bid=0/ask=1</td>
+            <td><span class="tag skip">Skip (no edge)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Delta hedging flow</div>
+    <div class="card">
+      <div class="flow-row">
+        <div class="flow-box">Trade vouchers (build pos)</div>
+        <div class="arrow">→</div>
+        <div class="flow-box">Sum (pos × delta) per voucher</div>
+        <div class="arrow">→</div>
+        <div class="flow-box">Net option delta</div>
+        <div class="arrow">→</div>
+        <div class="flow-box">Hedge: sell/buy VEV spot</div>
+      </div>
+      <div style="margin-top: 12px; font-size: 12px; color: var(--color-text-secondary);">
+        Net delta rebalanced every tick. VEV position = −Σ(voucher_pos × BS_delta). Position cap: ±200 on VEV after hedge.
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">IV surface (historical days 0–2)</div>
+    <div class="card" id="iv-chart-wrap" style="position:relative; height: 220px;">
+      <canvas id="iv-chart" role="img" aria-label="Implied volatility by strike across 3 historical days">IV is approximately 23–25% across all strikes with slight variation.</canvas>
+    </div>
+  </div>
+
+  <div class="section" style="margin-bottom: 0;">
+    <div class="section-title">Key risk factors</div>
+    <div class="card">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 12px;">
+        <div>
+          <div style="font-weight: 500; margin-bottom: 4px; color: var(--color-text-primary);">Gamma risk</div>
+          <div style="color: var(--color-text-secondary);">Near-ATM options (5200–5400) have highest gamma. Large VEV moves create P&L drag if hedge rebalancing lags.</div>
+        </div>
+        <div>
+          <div style="font-weight: 500; margin-bottom: 4px; color: var(--color-text-primary);">Theta decay benefit</div>
+          <div style="color: var(--color-text-secondary);">Short options collect theta: VEV_5300 loses ~5.8/day, VEV_5400 ~3.8/day. Flat market = profit from time decay.</div>
+        </div>
+        <div>
+          <div style="font-weight: 500; margin-bottom: 4px; color: var(--color-text-primary);">VEV hedge capacity</div>
+          <div style="color: var(--color-text-secondary);">VEV limit is 200. If options delta exceeds ±200, hedge is capped. Prioritise lower-delta vouchers or reduce option size.</div>
+        </div>
+        <div>
+          <div style="font-weight: 500; margin-bottom: 4px; color: var(--color-text-primary);">Expiry risk (TTE→0)</div>
+          <div style="color: var(--color-text-secondary);">As TTE → 0 in rounds 4–7, delta collapses fast for OTM options. Reduce OTM positions aggressively in later rounds.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+const ivData = {
+  labels: ['VEV_5000','VEV_5100','VEV_5200','VEV_5300','VEV_5400','VEV_5500'],
+  datasets: [
+    {
+      label: 'Day 0 (TTE=8)',
+      data: [24.0, 24.4, 23.9, 23.9, 22.9, 24.6],
+      borderColor: '#185FA5', backgroundColor: '#185FA5' + '33',
+      borderWidth: 2, pointRadius: 4, tension: 0.3
+    },
+    {
+      label: 'Day 1 (TTE=7)',
+      data: [24.2, 23.8, 24.4, 24.7, 22.9, 25.0],
+      borderColor: '#0F6E56', backgroundColor: '#0F6E56' + '33',
+      borderWidth: 2, pointRadius: 4, tension: 0.3
+    },
+    {
+      label: 'Day 2 (TTE=6)',
+      data: [24.2, 23.6, 24.3, 24.7, 23.0, 25.2],
+      borderColor: '#BA7517', backgroundColor: '#BA7517' + '33',
+      borderWidth: 2, pointRadius: 4, tension: 0.3
+    }
+  ]
+};
+
+new Chart(document.getElementById('iv-chart'), {
+  type: 'line',
+  data: ivData,
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: true, position: 'top', labels: { font: { size: 11 }, padding: 10, boxWidth: 12, boxHeight: 2 } },
+      tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + ctx.raw + '%' } }
+    },
+    scales: {
+      y: {
+        title: { display: true, text: 'Implied vol (%)', font: { size: 11 } },
+        min: 21, max: 27,
+        ticks: { callback: v => v + '%', font: { size: 11 } },
+        grid: { color: 'rgba(128,128,128,0.1)' }
+      },
+      x: {
+        ticks: { font: { size: 11 }, autoSkip: false },
+        grid: { color: 'rgba(128,128,128,0.1)' }
+      }
+    }
+  }
+});
+</script>
