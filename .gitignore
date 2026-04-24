@@ -1,0 +1,4 @@
+backtests/
+env/
+__pycache__/
+*.pyc
