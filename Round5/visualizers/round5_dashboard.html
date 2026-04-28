@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMC Prosperity — Round 5 Quant Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #080c10;
+    --surface:  #0d1117;
+    --panel:    #111820;
+    --border:   #1e2d3d;
+    --border2:  #243447;
+    --accent:   #00d4ff;
+    --accent2:  #00ff88;
+    --accent3:  #ff6b35;
+    --accent4:  #ffd700;
+    --warn:     #ff4757;
+    --muted:    #4a6278;
+    --text:     #c9d8e8;
+    --text2:    #7a99b5;
+    --text3:    #4a6278;
+    --mono:     'Space Mono', monospace;
+    --sans:     'DM Sans', sans-serif;
+    --r1: #ff4757; --r2: #ff6348; --r3: #ffa502;
+    --g1: #00ff88; --g2: #00d4ff; --g3: #7bed9f;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  /* ── SCANLINE overlay ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 9999;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,.07) 2px, rgba(0,0,0,.07) 4px);
+    pointer-events: none;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: linear-gradient(135deg, #060a0e 0%, #0a1520 100%);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 40px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  header::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 80% at 80% 50%, rgba(0,212,255,.04) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .header-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--accent);
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    background: rgba(0,212,255,.07);
+    border: 1px solid rgba(0,212,255,.2);
+    padding: 3px 10px;
+    border-radius: 2px;
+    margin-bottom: 10px;
+    display: inline-block;
+  }
+  h1 {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: #e8f4ff;
+    letter-spacing: -.02em;
+    line-height: 1.2;
+  }
+  h1 span { color: var(--accent); }
+  .subtitle { font-size: 12px; color: var(--text2); margin-top: 6px; font-family: var(--mono); }
+  .pnl-badge {
+    background: rgba(0,255,136,.08);
+    border: 1px solid rgba(0,255,136,.25);
+    padding: 14px 22px;
+    border-radius: 4px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+  .pnl-badge .label { font-family: var(--mono); font-size: 9px; color: var(--text3); letter-spacing: .12em; text-transform: uppercase; }
+  .pnl-badge .value { font-family: var(--mono); font-size: 26px; color: var(--accent2); font-weight: 700; margin-top: 2px; }
+  .pnl-badge .sub { font-size: 10px; color: var(--text2); margin-top: 3px; font-family: var(--mono); }
+
+  /* ── NAV TABS ── */
+  nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 40px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+  }
+  nav button {
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 14px 22px;
+    color: var(--text3);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .2s, border-color .2s;
+  }
+  nav button:hover { color: var(--text); }
+  nav button.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ── LAYOUT ── */
+  main { padding: 32px 40px; max-width: 1400px; margin: 0 auto; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+  section-title {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 18px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  /* ── GRID LAYOUTS ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  @media(max-width:900px){ .grid-2,.grid-3 { grid-template-columns:1fr; } }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent-line, var(--accent)), transparent);
+    opacity: .4;
+  }
+  .card.gold  { --accent-line: var(--accent4); }
+  .card.green { --accent-line: var(--accent2); }
+  .card.red   { --accent-line: var(--warn); }
+  .card.orange{ --accent-line: var(--accent3); }
+
+  .card-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent-line, var(--accent)); flex-shrink: 0; }
+
+  /* ── STAT ROWS ── */
+  .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(255,255,255,.03); }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-label { color: var(--text2); font-size: 11px; font-family: var(--mono); }
+  .stat-val { font-family: var(--mono); font-size: 12px; color: var(--text); }
+  .stat-val.up   { color: var(--accent2); }
+  .stat-val.down { color: var(--warn); }
+  .stat-val.hi   { color: var(--accent4); }
+  .stat-val.accent { color: var(--accent); }
+
+  /* ── RANKING TABLE ── */
+  .rank-table { width: 100%; border-collapse: collapse; }
+  .rank-table th {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border2);
+  }
+  .rank-table td {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 9px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.03);
+    vertical-align: middle;
+  }
+  .rank-table tr:hover td { background: rgba(255,255,255,.02); }
+  .rank-table tr.top1 td { background: rgba(0,212,255,.04); }
+  .rank-table tr.top2 td { background: rgba(0,255,136,.03); }
+  .rank-table tr.top3 td { background: rgba(255,107,53,.03); }
+
+  .badge {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .08em;
+    padding: 2px 7px;
+    border-radius: 2px;
+    font-weight: 700;
+  }
+  .badge.gold   { background: rgba(255,215,0,.12);  color: var(--accent4); border: 1px solid rgba(255,215,0,.3); }
+  .badge.silver { background: rgba(0,212,255,.1);   color: var(--accent);  border: 1px solid rgba(0,212,255,.25); }
+  .badge.bronze { background: rgba(255,107,53,.1);  color: var(--accent3); border: 1px solid rgba(255,107,53,.25); }
+  .badge.muted  { background: rgba(255,255,255,.05);color: var(--text2);   border: 1px solid var(--border2); }
+  .badge.green  { background: rgba(0,255,136,.1);   color: var(--accent2); border: 1px solid rgba(0,255,136,.25); }
+  .badge.red    { background: rgba(255,71,87,.1);   color: var(--warn);    border: 1px solid rgba(255,71,87,.25); }
+
+  /* ── FORMULA BOX ── */
+  .formula {
+    background: rgba(0,0,0,.4);
+    border: 1px solid var(--border2);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent2);
+    border-radius: 0 4px 4px 0;
+    margin: 10px 0;
+    word-break: break-all;
+    line-height: 1.7;
+  }
+  .formula .coef { color: var(--accent); }
+  .formula .const-val { color: var(--accent4); }
+
+  /* ── PROGRESS BARS ── */
+  .bar-wrap { display: flex; align-items: center; gap: 10px; }
+  .bar-track { flex: 1; height: 6px; background: rgba(255,255,255,.06); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; transition: width .6s cubic-bezier(.4,0,.2,1); }
+  .bar-label { font-family: var(--mono); font-size: 10px; width: 50px; text-align: right; flex-shrink: 0; }
+
+  /* ── P-VALUE INDICATOR ── */
+  .pval {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 10px;
+  }
+  .pval .dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .pval.sig   .dot { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+  .pval.ok    .dot { background: var(--accent4); }
+  .pval.weak  .dot { background: var(--warn); }
+
+  /* ── VOL BARS ── */
+  .vol-grid { display: flex; flex-direction: column; gap: 7px; margin-top: 10px; }
+  .vol-row { display: flex; align-items: center; gap: 8px; }
+  .vol-name { font-family: var(--mono); font-size: 10px; color: var(--text2); width: 80px; flex-shrink: 0; }
+  .vol-bar { flex: 1; height: 14px; background: rgba(255,255,255,.04); border-radius: 2px; overflow: hidden; position: relative; }
+  .vol-fill { height: 100%; border-radius: 2px; }
+  .vol-val { font-family: var(--mono); font-size: 10px; color: var(--text2); width: 50px; text-align: right; flex-shrink: 0; }
+  .anomaly-tag {
+    font-family: var(--mono); font-size: 8px;
+    background: rgba(255,215,0,.12); color: var(--accent4);
+    border: 1px solid rgba(255,215,0,.2);
+    padding: 1px 5px; border-radius: 2px; margin-left: 4px;
+  }
+
+  /* ── GROUP CARDS ── */
+  .group-selector { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+  .group-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 6px 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: .08em;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all .2s;
+    text-transform: uppercase;
+  }
+  .group-btn:hover { border-color: var(--border2); color: var(--text); }
+  .group-btn.active { background: rgba(0,212,255,.08); border-color: var(--accent); color: var(--accent); }
+  .group-detail { display: none; }
+  .group-detail.active { display: block; }
+
+  /* ── STRATEGY CARDS ── */
+  .strat-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px; flex-wrap: wrap; gap: 10px;
+  }
+  .strat-title {
+    font-family: var(--mono);
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .strat-title.rank1 { color: var(--accent4); }
+  .strat-title.rank2 { color: var(--accent2); }
+  .strat-title.rank3 { color: var(--accent); }
+
+  .entry-exit {
+    background: rgba(0,0,0,.35);
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin: 12px 0;
+  }
+  .ee-row {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.04);
+  }
+  .ee-row:last-child { border-bottom: none; }
+  .ee-side {
+    font-family: var(--mono); font-size: 9px; letter-spacing: .1em;
+    padding: 2px 8px; border-radius: 2px; flex-shrink: 0; margin-top: 1px;
+    font-weight: 700;
+  }
+  .ee-side.buy  { background: rgba(0,255,136,.12); color: var(--accent2); border: 1px solid rgba(0,255,136,.2); }
+  .ee-side.sell { background: rgba(255,71,87,.12);  color: var(--warn);    border: 1px solid rgba(255,71,87,.2); }
+  .ee-side.exit { background: rgba(0,212,255,.1);   color: var(--accent);  border: 1px solid rgba(0,212,255,.2); }
+  .ee-text { font-family: var(--mono); font-size: 11px; color: var(--text); line-height: 1.6; }
+  .ee-text code {
+    background: rgba(0,212,255,.08); color: var(--accent);
+    padding: 1px 5px; border-radius: 2px; font-size: 10px;
+  }
+
+  /* ── PAIR TABLE ── */
+  .pair-table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  .pair-table th { font-family: var(--mono); font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--text3); padding: 6px 10px; border-bottom: 1px solid var(--border2); text-align: left; }
+  .pair-table td { font-family: var(--mono); font-size: 11px; padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,.03); }
+  .pair-table tr:first-child td { color: var(--text); }
+  .pair-table tr:not(:first-child) td { color: var(--text2); }
+
+  /* ── CROSS-CAT ── */
+  .xcorr-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.03);
+  }
+  .xcorr-row:last-child { border-bottom: none; }
+  .xcorr-leader { font-family: var(--mono); font-size: 10px; color: var(--accent); width: 140px; flex-shrink: 0; }
+  .xcorr-arrow { color: var(--text3); font-size: 12px; flex-shrink: 0; }
+  .xcorr-follower { font-family: var(--mono); font-size: 10px; color: var(--text); width: 140px; flex-shrink: 0; }
+  .xcorr-lag { font-family: var(--mono); font-size: 10px; color: var(--text2); width: 50px; text-align: center; flex-shrink: 0; }
+  .xcorr-val { font-family: var(--mono); font-size: 11px; flex: 1; }
+  .xcorr-bar { flex: 1; height: 8px; background: rgba(255,255,255,.05); border-radius: 4px; overflow: hidden; }
+  .xcorr-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg, rgba(0,212,255,.3), var(--accent)); }
+
+  /* ── BACKTEST SUMMARY ── */
+  .bt-stat { text-align: center; padding: 16px; }
+  .bt-stat .n { font-family: var(--mono); font-size: 28px; font-weight: 700; }
+  .bt-stat .l { font-family: var(--mono); font-size: 9px; letter-spacing: .12em; text-transform: uppercase; color: var(--text3); margin-top: 4px; }
+
+  /* ── DISCOVERY BANNER ── */
+  .discovery {
+    background: rgba(0,212,255,.04);
+    border: 1px solid rgba(0,212,255,.15);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin-bottom: 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .discovery::before {
+    content: 'DISCOVERY';
+    position: absolute; top: 10px; right: 14px;
+    font-family: var(--mono); font-size: 8px; letter-spacing: .15em;
+    color: rgba(0,212,255,.3);
+  }
+  .discovery p { font-size: 12px; color: var(--text); line-height: 1.7; }
+  .discovery strong { color: var(--accent); }
+
+  /* ── PULSE ── */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+  .live { animation: pulse 2s ease-in-out infinite; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent2); margin-right: 6px; vertical-align: middle; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div>
+      <div class="header-tag">IMC Prosperity 3 · Round 5</div>
+      <h1>Quantitative <span>Analysis</span> Dashboard</h1>
+      <div class="subtitle"><span class="live"></span>50 products · 10 groups · 3 days · ~9M rows processed</div>
+    </div>
+    <div class="pnl-badge">
+      <div class="label">Backtest P&amp;L</div>
+      <div class="value">+9,977,635</div>
+      <div class="sub">Sampled · 3 strategies · 30k ticks</div>
+    </div>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="switchTab('overview')">Overview</button>
+  <button onclick="switchTab('phase1')">Phase 1 · Cointegration</button>
+  <button onclick="switchTab('phase3')">Phase 3 · Hidden Formulas</button>
+  <button onclick="switchTab('phase2')">Phase 2 · Lead-Lag</button>
+  <button onclick="switchTab('strategies')">Strategies</button>
+</nav>
+
+<main>
+
+<!-- ════════════ OVERVIEW ════════════ -->
+<div id="tab-overview" class="tab-content active">
+  <section-title>Group Ranking · Composite Score</section-title>
+
+  <div style="margin-bottom:24px">
+    <table class="rank-table" style="background:var(--panel);border:1px solid var(--border);border-radius:6px;overflow:hidden">
+      <thead>
+        <tr>
+          <th>#</th><th>Group</th><th>Score</th><th>Best R²</th><th>Basket Std</th><th>ADF p-val</th><th>Basket CoV</th><th>Signal</th>
+        </tr>
+      </thead>
+      <tbody id="ranking-body"></tbody>
+    </table>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:24px">
+    <div class="card gold">
+      <div class="card-title"><div class="dot"></div>Rank #1 · PEBBLES</div>
+      <div class="discovery" style="margin-bottom:0">
+        <p><strong>Iron-Law Basket:</strong> L + M + S + XL + XS = <strong>50,000</strong> at all times.<br>
+        Basket σ = <strong>2.80</strong> · CoV = <strong>0.0056%</strong> · R² = <strong>0.999998</strong></p>
+      </div>
+    </div>
+    <div class="card green">
+      <div class="card-title"><div class="dot"></div>Rank #2 · SNACKPACK</div>
+      <div class="discovery" style="margin-bottom:0">
+        <p><strong>Hidden Pair:</strong> CHOC ≈ −0.922 × VANILLA + const<br>
+        R² = <strong>0.948</strong> · CHOC+VAN σ = <strong>76.2</strong> · best pair ADF p = <strong>0.0014</strong></p>
+      </div>
+    </div>
+    <div class="card" style="--accent-line:var(--accent)">
+      <div class="card-title"><div class="dot"></div>Rank #3 · MICROCHIP</div>
+      <div class="discovery" style="margin-bottom:0">
+        <p><strong>Multi-factor pricing:</strong> OVAL explained by 4 peers.<br>
+        R² = <strong>0.919</strong> · Best pair ADF p = <strong>0.004</strong> · HL = <strong>756 ticks</strong></p>
+      </div>
+    </div>
+  </div>
+
+  <section-title style="margin-top:24px">Backtest Performance Breakdown</section-title>
+  <div class="grid-3">
+    <div class="card gold">
+      <div class="card-title"><div class="dot"></div>PEBBLES Strategy</div>
+      <div class="stat-row"><span class="stat-label">Strategy type</span><span class="stat-val accent">Deterministic Arb</span></div>
+      <div class="stat-row"><span class="stat-label">Buy fills</span><span class="stat-val">14,600 units</span></div>
+      <div class="stat-row"><span class="stat-label">Sell fills</span><span class="stat-val">14,650 units</span></div>
+      <div class="stat-row"><span class="stat-label">Exit events</span><span class="stat-val">1,460</span></div>
+      <div class="stat-row"><span class="stat-label">Edge threshold</span><span class="stat-val hi">7.0 ticks</span></div>
+      <div class="stat-row"><span class="stat-label">Max fair-value error</span><span class="stat-val up">±8.4 ticks (3σ)</span></div>
+    </div>
+    <div class="card green">
+      <div class="card-title"><div class="dot"></div>SNACKPACK Strategy</div>
+      <div class="stat-row"><span class="stat-label">Strategy type</span><span class="stat-val accent">Z-Score Mean Rev</span></div>
+      <div class="stat-row"><span class="stat-label">Buy fills</span><span class="stat-val">1,180 units</span></div>
+      <div class="stat-row"><span class="stat-label">Sell fills</span><span class="stat-val">1,180 units</span></div>
+      <div class="stat-row"><span class="stat-label">Exit events</span><span class="stat-val">234</span></div>
+      <div class="stat-row"><span class="stat-label">Z entry threshold</span><span class="stat-val hi">±2.0σ</span></div>
+      <div class="stat-row"><span class="stat-label">Z exit threshold</span><span class="stat-val up">±0.5σ</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot"></div>MICROCHIP Strategy</div>
+      <div class="stat-row"><span class="stat-label">Strategy type</span><span class="stat-val accent">Residual Arb</span></div>
+      <div class="stat-row"><span class="stat-label">Buy fills</span><span class="stat-val">460 units</span></div>
+      <div class="stat-row"><span class="stat-label">Sell fills</span><span class="stat-val">380 units</span></div>
+      <div class="stat-row"><span class="stat-label">Exit events</span><span class="stat-val">83</span></div>
+      <div class="stat-row"><span class="stat-label">Z entry threshold</span><span class="stat-val hi">±2.0σ</span></div>
+      <div class="stat-row"><span class="stat-label">Z exit threshold</span><span class="stat-val up">±0.3σ</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════ PHASE 1 ════════════ -->
+<div id="tab-phase1" class="tab-content">
+  <section-title>ADF Spread Tests · Basket Stationarity · Pair Half-Lives</section-title>
+
+  <div class="group-selector" id="p1-grp-btns"></div>
+  <div id="p1-group-panels"></div>
+</div>
+
+<!-- ════════════ PHASE 3 ════════════ -->
+<div id="tab-phase3" class="tab-content">
+  <section-title>OLS Regression R² · Hidden Pricing Formulas · Volatility Anomalies</section-title>
+
+  <div class="group-selector" id="p3-grp-btns"></div>
+  <div id="p3-group-panels"></div>
+</div>
+
+<!-- ════════════ PHASE 2 ════════════ -->
+<div id="tab-phase2" class="tab-content">
+  <section-title>Lead-Lag Cross-Correlations · Within-Group (1-10 ticks)</section-title>
+
+  <div class="grid-2" style="margin-bottom:24px">
+    <div class="card">
+      <div class="card-title"><div class="dot"></div>Within-Group Best Lead-Lag Signals</div>
+      <div id="ll-within-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><div class="dot"></div>Cross-Category Lead-Lag (Top 8)</div>
+      <div id="ll-cross-list"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title"><div class="dot"></div>Group Leader Scores (sum of |xcorr| across all follower pairs)</div>
+    <div id="leader-score-list" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- ════════════ STRATEGIES ════════════ -->
+<div id="tab-strategies" class="tab-content">
+  <section-title>Top 3 Trading Strategies · Exact Entry/Exit Logic</section-title>
+
+  <!-- STRATEGY 1 -->
+  <div class="card gold" style="margin-bottom:20px">
+    <div class="strat-header">
+      <div>
+        <div class="strat-title rank1">⬡ Rank #1 — PEBBLES: Deterministic Basket Arbitrage</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:4px">
+          Constant-sum constraint · R² = 0.999998 · No statistical assumptions needed
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge gold">DETERMINISTIC</span>
+        <span class="badge green">5 PRODUCTS</span>
+        <span class="badge muted">±10 PER ASSET</span>
+      </div>
+    </div>
+
+    <div class="discovery">
+      <p><strong>The Iron Law:</strong> L + M + S + XL + XS = <strong>50,000</strong> at every single tick (σ = 2.80, CoV = 0.0056%). This is not a correlation — it is a hard-coded game mechanic. The ADF p-value on the basket deviation is <strong>0.000000</strong>. Any single pebble's fair value is <em>deterministically</em> computable from the other four.</p>
+    </div>
+
+    <div class="formula">
+      fair(<span class="coef">X</span>) = <span class="const-val">50,000</span> − Σ(mid_price of other 4 pebbles)
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:.1em;text-transform:uppercase">Entry / Exit Logic</div>
+        <div class="entry-exit">
+          <div class="ee-row">
+            <span class="ee-side buy">BUY</span>
+            <div class="ee-text">pebble <code>i</code> at ask_i if <code>ask_i &lt; fair_i − 7.0</code></div>
+          </div>
+          <div class="ee-row">
+            <span class="ee-side sell">SELL</span>
+            <div class="ee-text">pebble <code>i</code> at bid_i if <code>bid_i &gt; fair_i + 7.0</code></div>
+          </div>
+          <div class="ee-row">
+            <span class="ee-side exit">EXIT LONG</span>
+            <div class="ee-text">when <code>bid_i ≥ fair_i</code> (fair value realized)</div>
+          </div>
+          <div class="ee-row">
+            <span class="ee-side exit">EXIT SHORT</span>
+            <div class="ee-text">when <code>ask_i ≤ fair_i</code></div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:.1em;text-transform:uppercase">Position &amp; Risk</div>
+        <div class="stat-row"><span class="stat-label">Max long per pebble</span><span class="stat-val up">+10</span></div>
+        <div class="stat-row"><span class="stat-label">Max short per pebble</span><span class="stat-val down">−10</span></div>
+        <div class="stat-row"><span class="stat-label">Cross-hedge needed?</span><span class="stat-val">No (independent)</span></div>
+        <div class="stat-row"><span class="stat-label">Typical bid-ask spread</span><span class="stat-val hi">~13 ticks</span></div>
+        <div class="stat-row"><span class="stat-label">Edge threshold</span><span class="stat-val accent">7.0 ticks</span></div>
+        <div class="stat-row"><span class="stat-label">Max fair-value error (3σ)</span><span class="stat-val up">±8.4</span></div>
+        <div class="stat-row"><span class="stat-label">Max concurrent products</span><span class="stat-val">5 independent</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STRATEGY 2 -->
+  <div class="card green" style="margin-bottom:20px">
+    <div class="strat-header">
+      <div>
+        <div class="strat-title rank2">⬡ Rank #2 — SNACKPACK: CHOC+VAN Sum Mean-Reversion</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:4px">
+          Statistical arbitrage · R² = 0.948 · Rolling z-score signal
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge green">STAT ARB</span>
+        <span class="badge silver">2 PRODUCTS</span>
+        <span class="badge muted">±10/±10</span>
+      </div>
+    </div>
+
+    <div class="discovery">
+      <p>CHOCOLATE ≈ −0.9221 × VANILLA + 19,501 (R² = 0.948, resid σ = 45.6). The sum CHOC + VAN mean-reverts around <strong>~19,941</strong> with σ = 76.2. Best pair ADF p-value = <strong>0.0014</strong>.</p>
+    </div>
+
+    <div class="formula">
+      CHOCOLATE = <span class="const-val">+19500.96</span> <span class="coef">+0.1120</span>×PISTACHIO <span class="coef">+0.0112</span>×RASPBERRY <span class="coef">−0.1423</span>×STRAWBERRY <span class="coef">−0.9221</span>×VANILLA
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:.1em;text-transform:uppercase">Entry / Exit Logic</div>
+        <div class="entry-exit">
+          <div class="ee-row">
+            <span class="ee-side sell">SELL BOTH</span>
+            <div class="ee-text">if <code>z &gt; +2.0</code> → SELL CHOC at bid, SELL VANILLA at bid (sum too high)</div>
+          </div>
+          <div class="ee-row">
+            <span class="ee-side buy">BUY BOTH</span>
+            <div class="ee-text">if <code>z &lt; −2.0</code> → BUY CHOC at ask, BUY VANILLA at ask (sum too low)</div>
+          </div>
+          <div class="ee-row">
+            <span class="ee-side exit">FLATTEN</span>
+            <div class="ee-text">if <code>|z| &lt; 0.5</code> → close both legs at best available price</div>
+          </div>
+        </div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:8px">
+          z = (CHOC_mid + VAN_mid − μ<sub>500</sub>) / σ<sub>500</sub>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:.1em;text-transform:uppercase">Position &amp; Risk</div>
+        <div class="stat-row"><span class="stat-label">Leg size each</span><span class="stat-val up">±10</span></div>
+        <div class="stat-row"><span class="stat-label">Hedge ratio</span><span class="stat-val">1 : 1</span></div>
+        <div class="stat-row"><span class="stat-label">Rolling window</span><span class="stat-val accent">500 ticks</span></div>
+        <div class="stat-row"><span class="stat-label">Half-life</span><span class="stat-val">1,110 ticks</span></div>
+        <div class="stat-row"><span class="stat-label">CHOC+VAN sum σ</span><span class="stat-val hi">76.2</span></div>
+        <div class="stat-row"><span class="stat-label">Max adverse 3σ move</span><span class="stat-val down">±137</span></div>
+        <div class="stat-row"><span class="stat-label">|z|&gt;2 frequency</span><span class="stat-val">~14.9% of ticks</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STRATEGY 3 -->
+  <div class="card" style="--accent-line:var(--accent);margin-bottom:20px">
+    <div class="strat-header">
+      <div>
+        <div class="strat-title rank3">⬡ Rank #3 — MICROCHIP: OVAL Residual Arbitrage</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:4px">
+          Multi-factor OLS regression · R² = 0.919 · OVAL vs 4 predictors
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="badge silver">REGRESSION ARB</span>
+        <span class="badge muted">1 PRODUCT</span>
+        <span class="badge muted">±10 OVAL</span>
+      </div>
+    </div>
+
+    <div class="discovery">
+      <p>OVAL is priced as a function of the other 4 chips with R² = 0.919. The residual has σ = 442.7 and a best-pair ADF p-value of <strong>0.004</strong>. At R² &gt; 0.90, trading only the target (OVAL) is sufficient — no need to delta-hedge the four predictors.</p>
+    </div>
+
+    <div class="formula">
+      OVAL = <span class="const-val">−490.56</span> <span class="coef">−0.3295</span>×CIRCLE <span class="coef">+0.4549</span>×RECTANGLE <span class="coef">−0.2335</span>×SQUARE <span class="coef">+1.1261</span>×TRIANGLE
+    </div>
+
+    <div class="grid-2">
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:.1em;text-transform:uppercase">Entry / Exit Logic</div>
+        <div class="entry-exit">
+          <div class="ee-row">
+            <span class="ee-side sell">SHORT OVAL</span>
+            <div class="ee-text">if residual z-score <code>&gt; +2.0</code> → OVAL overpriced vs basket</div>
+          </div>
+          <div class="ee-row">
+            <span class="ee-side buy">LONG OVAL</span>
+            <div class="ee-text">if residual z-score <code>&lt; −2.0</code> → OVAL underpriced vs basket</div>
+          </div>
+          <div class="ee-row">
+            <span class="ee-side exit">FLATTEN</span>
+            <div class="ee-text">if <code>|z| &lt; 0.3</code> (tight exit — high R² justifies it)</div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:.1em;text-transform:uppercase">Position &amp; Risk</div>
+        <div class="stat-row"><span class="stat-label">Target product</span><span class="stat-val accent">MICROCHIP_OVAL</span></div>
+        <div class="stat-row"><span class="stat-label">Max position</span><span class="stat-val">±10</span></div>
+        <div class="stat-row"><span class="stat-label">Predictor hedging</span><span class="stat-val up">Not required (R²=0.92)</span></div>
+        <div class="stat-row"><span class="stat-label">Rolling window</span><span class="stat-val accent">500 ticks</span></div>
+        <div class="stat-row"><span class="stat-label">Residual σ</span><span class="stat-val hi">442.7</span></div>
+        <div class="stat-row"><span class="stat-label">Best pair ADF p</span><span class="stat-val up">0.004143</span></div>
+        <div class="stat-row"><span class="stat-label">Half-life (RECT−SQRE)</span><span class="stat-val">756 ticks</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// DATA (embedded from analysis output)
+// ════════════════════════════════════════════════════════════════════
+const DATA = {
+  ranking: [
+    {group:'PEBBLES',    score:0.877128, r2:0.999998, basket_std:2.7985,   adf_p:0.035315, cov:0.005597,  badge:'gold'},
+    {group:'SNACKPACK',  score:0.824480, r2:0.948367, basket_std:189.58,   adf_p:0.001401, cov:0.377491,  badge:'silver'},
+    {group:'MICROCHIP',  score:0.807964, r2:0.918629, basket_std:1501.93,  adf_p:0.004143, cov:3.039848,  badge:'bronze'},
+    {group:'UV_VISOR',   score:0.790689, r2:0.896354, basket_std:742.33,   adf_p:0.021969, cov:1.442246,  badge:'muted'},
+    {group:'SLEEP_POD',  score:0.788522, r2:0.887887, basket_std:2855.14,  adf_p:0.015640, cov:5.181414,  badge:'muted'},
+    {group:'ROBOT',      score:0.737287, r2:0.791477, basket_std:807.83,   adf_p:0.024677, cov:1.655058,  badge:'muted'},
+    {group:'OXYGEN_SHAKE',score:0.682440,r2:0.694596, basket_std:1083.10,  adf_p:0.042846, cov:2.140802,  badge:'muted'},
+    {group:'TRANSLATOR', score:0.672841, r2:0.677091, basket_std:816.71,   adf_p:0.045394, cov:1.647447,  badge:'muted'},
+    {group:'PANEL',      score:0.656603, r2:0.700084, basket_std:850.37,   adf_p:0.124616, cov:1.733988,  badge:'muted'},
+    {group:'GALAXY_SOUNDS',score:0.491362,r2:0.301419,basket_std:1645.04,  adf_p:0.026967, cov:3.046913,  badge:'muted'},
+  ],
+
+  phase1: {
+    PEBBLES: {
+      n_ticks:30000, avg_corr:-0.209,
+      vols:{L:622.33,M:687.82,S:833.28,XL:1776.55,XS:1449.55},
+      basket:{mean:49999.94,std:2.7985,adf_p:0.0},
+      pairs:[
+        {a:'M',b:'XS',beta:-0.3293,adf_p:0.035315,hl:1271.0,spread_std:495.16},
+        {a:'S',b:'XS',beta:0.4589, adf_p:0.053480,hl:1277.7,spread_std:501.88},
+        {a:'M',b:'S', beta:-0.5082,adf_p:0.063708,hl:1390.8,spread_std:541.98},
+      ]
+    },
+    SNACKPACK: {
+      n_ticks:30000, avg_corr:-0.231,
+      vols:{CHOCOLATE:200.73,PISTACHIO:187.50,RASPBERRY:169.81,STRAWBERRY:363.57,VANILLA:178.51},
+      basket:{mean:50220.94,std:189.58,adf_p:0.04342595},
+      pairs:[
+        {a:'RASPBERRY',b:'VANILLA',    beta:0.0209, adf_p:0.001401,hl:623.6, spread_std:169.77},
+        {a:'RASPBERRY',b:'STRAWBERRY', beta:-0.1932,adf_p:0.006218,hl:757.8, spread_std:154.61},
+        {a:'PISTACHIO',b:'STRAWBERRY', beta:-0.2275,adf_p:0.006769,hl:806.2, spread_std:168.26},
+      ]
+    },
+    MICROCHIP: {
+      n_ticks:30000, avg_corr:-0.117,
+      vols:{CIRCLE:532.51,OVAL:1551.91,RECTANGLE:752.02,SQUARE:1830.25,TRIANGLE:833.37},
+      basket:{mean:49408.06,std:1501.93,adf_p:0.62504628},
+      pairs:[
+        {a:'RECTANGLE',b:'SQUARE',   beta:-0.3625,adf_p:0.004143,hl:755.5, spread_std:353.97},
+        {a:'OVAL',     b:'TRIANGLE', beta:1.6210, adf_p:0.020434,hl:1059.2,spread_std:763.92},
+        {a:'CIRCLE',   b:'TRIANGLE', beta:-0.3791,adf_p:0.123625,hl:1896.1,spread_std:428.64},
+      ]
+    },
+    UV_VISOR: {
+      n_ticks:30000, avg_corr:-0.115,
+      vols:{AMBER:996.92,MAGENTA:613.55,ORANGE:550.60,RED:587.72,YELLOW:681.81},
+      basket:{mean:51470.75,std:742.33,adf_p:0.09936609},
+      pairs:[
+        {a:'AMBER',   b:'MAGENTA',adf_p:0.021969,beta:-1.4092,hl:1058.0,spread_std:496.29},
+        {a:'RED',     b:'YELLOW', adf_p:0.053472,beta:-0.3815,hl:1882.2,spread_std:527.02},
+        {a:'MAGENTA', b:'ORANGE', adf_p:0.263960,beta:0.6512, hl:2263.6,spread_std:497.88},
+      ]
+    },
+    SLEEP_POD: {
+      n_ticks:30000, avg_corr:0.379,
+      vols:{COTTON:887.69,WOOL:413.17,NYLON:508.73,POLYESTER:977.54,SUEDE:899.95},
+      basket:{mean:55103.51,std:2855.14,adf_p:0.43072413},
+      pairs:[
+        {a:'WOOL',    b:'NYLON',    beta:0.4005,adf_p:0.015640,hl:1197.5,spread_std:359.43},
+        {a:'COTTON',  b:'POLYESTER',beta:0.7948,adf_p:0.033574,hl:1132.0,spread_std:429.37},
+        {a:'POLYESTER',b:'SUEDE',  beta:0.9337,adf_p:0.056072,hl:1319.9,spread_std:499.46},
+      ]
+    },
+    ROBOT: {
+      n_ticks:30000, avg_corr:-0.163,
+      vols:{DISHES:556.64,IRONING:771.03,LAUNDRY:614.32,MOPPING:767.16,VACUUMING:535.26},
+      basket:{mean:48809.64,std:807.83,adf_p:0.10541213},
+      pairs:[
+        {a:'LAUNDRY', b:'VACUUMING',beta:0.9037, adf_p:0.024677,hl:1131.9,spread_std:378.68},
+        {a:'DISHES',  b:'VACUUMING',beta:-0.7139,adf_p:0.055921,hl:627.3, spread_std:404.75},
+        {a:'IRONING', b:'LAUNDRY',  beta:0.9252, adf_p:0.085097,hl:1621.3,spread_std:521.01},
+      ]
+    },
+    OXYGEN_SHAKE: {
+      n_ticks:30000, avg_corr:-0.124,
+      vols:{CHOCOLATE:560.60,EVENING_BREATH:652.81,GARLIC:953.35,MINT:508.13,MORNING_BREATH:400.0},
+      basket:{mean:50593.26,std:1083.10,adf_p:0.84359977},
+      pairs:[
+        {a:'CHOCOLATE',b:'GARLIC',  beta:0.3798,adf_p:0.042846,hl:1418.5,spread_std:428.02},
+        {a:'BREATH',   b:'MINT',    beta:-0.2402,adf_p:0.089099,hl:1391.0,spread_std:380.73},
+      ]
+    },
+    TRANSLATOR: {
+      n_ticks:30000, avg_corr:-0.095,
+      vols:{BLACK:489.75,CHARCOAL:355.64,MIST:499.54,GRAY:502.71,BLUE:579.25},
+      basket:{mean:49574.08,std:816.71,adf_p:0.20549654},
+      pairs:[
+        {a:'CHARCOAL',b:'BLUE', beta:0.2869,adf_p:0.045394,hl:1240.4,spread_std:314.42},
+        {a:'BLACK',   b:'BLUE', beta:-0.5626,adf_p:0.072278,hl:1452.9,spread_std:365.59},
+        {a:'CHARCOAL',b:'GRAY', beta:-0.1067,adf_p:0.139426,hl:1728.5,spread_std:351.56},
+      ]
+    },
+    PANEL: {
+      n_ticks:30000, avg_corr:-0.178,
+      vols:{'1X2':589.92,'1X4':834.03,'2X2':674.79,'2X4':627.19,'4X4':457.04},
+      basket:{mean:49041.00,std:850.37,adf_p:0.17774118},
+      pairs:[
+        {a:'1X2',b:'2X2',adf_p:0.124616,beta:-0.4698,hl:2421.4,spread_std:497.50},
+        {a:'1X2',b:'2X4',adf_p:0.288576,beta:0.1210, hl:3938.4,spread_std:585.02},
+        {a:'1X2',b:'1X4',adf_p:0.295201,beta:-0.2179,hl:3729.7,spread_std:561.22},
+      ]
+    },
+    GALAXY_SOUNDS: {
+      n_ticks:30000, avg_corr:0.055,
+      vols:{HOLES:958.44,MATTER:330.70,RINGS:765.84,FLAMES:450.15,WINDS:541.11},
+      basket:{mean:53990.32,std:1645.04,adf_p:0.14234691},
+      pairs:[
+        {a:'FLAMES',b:'WINDS', adf_p:0.026967,beta:-0.2789,hl:1403.2,spread_std:424.10},
+        {a:'MATTER',b:'RINGS', adf_p:0.038035,beta:0.1875, hl:1149.3,spread_std:297.90},
+        {a:'MATTER',b:'FLAMES',adf_p:0.068963,beta:-0.0166,hl:1416.5,spread_std:330.62},
+      ]
+    },
+  },
+
+  phase3: {
+    PEBBLES:    {best_r2:0.999998,resid_std:2.7984,  formula:'XL = +49999.94 −1.0000×L −1.0000×M −1.0000×S −1.0000×XS',         low_vol:{},   cov:0.005597},
+    SNACKPACK:  {best_r2:0.948367,resid_std:45.6125, formula:'CHOCOLATE = +19500.96 +0.1120×PISTACHIO +0.0112×RASPBERRY −0.1423×STRAWBERRY −0.9221×VANILLA',low_vol:{},cov:0.377491},
+    MICROCHIP:  {best_r2:0.918629,resid_std:442.69,  formula:'OVAL = −490.56 −0.3295×CIRCLE +0.4549×RECTANGLE −0.2335×SQUARE +1.1261×TRIANGLE',low_vol:{CIRCLE:532.51},cov:3.039848},
+    UV_VISOR:   {best_r2:0.896354,resid_std:320.95,  formula:'AMBER = +31353.28 −0.9698×MAGENTA −0.3847×ORANGE −0.6173×RED −0.1666×YELLOW',  low_vol:{},   cov:1.442246},
+    SLEEP_POD:  {best_r2:0.887887,resid_std:327.31,  formula:'POLYESTER = +84.64 +0.5837×COTTON −0.1455×WOOL +0.0699×NYLON +0.5186×SUEDE',   low_vol:{WOOL:413.17},cov:5.181414},
+    ROBOT:      {best_r2:0.791477,resid_std:350.32,  formula:'MOPPING = +30082.60 −0.5459×DISHES −0.5437×IRONING −0.3339×LAUNDRY −0.6003×VACUUMING',low_vol:{VACUUMING:535.26},cov:1.655058},
+    OXYGEN_SHAKE:{best_r2:0.694596,resid_std:526.85, formula:'GARLIC = +24052.47 +0.8085×CHOCOLATE −0.9709×E.BREATH −0.4018×MINT −0.6898×M.BREATH',low_vol:{BREATH:399.82},cov:2.140802},
+    TRANSLATOR: {best_r2:0.677091,resid_std:329.16,  formula:'BLUE = +15353.24 −0.6239×BLACK +0.5066×CHARCOAL +0.0215×MIST −0.4058×GRAY',    low_vol:{CHARCOAL:355.64},cov:1.647447},
+    PANEL:      {best_r2:0.700084,resid_std:369.55,  formula:'2X2 = +21783.25 −0.3432×1X2 +0.1810×1X4 −0.4115×2X4 −0.6287×4X4',             low_vol:{'4X4':457.04},cov:1.733988},
+    GALAXY_SOUNDS:{best_r2:0.301419,resid_std:452.27,formula:'WINDS = +11778.83 +0.2404×HOLES −0.0844×MATTER +0.0535×RINGS −0.3436×FLAMES',  low_vol:{MATTER:330.70},cov:3.046913},
+  },
+
+  phase2: {
+    within: [
+      {group:'SNACKPACK',  leader:'PISTACHIO',follower:'VANILLA',   lag:1, xcorr:-0.02121},
+      {group:'TRANSLATOR', leader:'GRAY',     follower:'CHARCOAL',  lag:1, xcorr:-0.02202},
+      {group:'PANEL',      leader:'1X2',      follower:'2X4',       lag:10,xcorr:0.02333},
+      {group:'MICROCHIP',  leader:'OVAL',     follower:'CIRCLE',    lag:5, xcorr:0.01934},
+      {group:'ROBOT',      leader:'MOPPING',  follower:'VACUUMING', lag:3, xcorr:-0.01793},
+      {group:'PEBBLES',    leader:'XL',       follower:'M',         lag:5, xcorr:-0.01753},
+      {group:'GALAXY_SOUNDS',leader:'RINGS',  follower:'FLAMES',    lag:2, xcorr:-0.01755},
+      {group:'SLEEP_POD',  leader:'WOOL',     follower:'NYLON',     lag:6, xcorr:-0.01696},
+      {group:'OXYGEN_SHAKE',leader:'BREATH',  follower:'BREATH',    lag:5, xcorr:-0.01899},
+      {group:'UV_VISOR',   leader:'RED',      follower:'MAGENTA',   lag:8, xcorr:-0.01542},
+    ],
+    cross: [
+      {leader:'SNACKPACK',    follower:'OXYGEN_SHAKE', lag:1, xcorr:-0.06918},
+      {leader:'UV_VISOR',     follower:'SNACKPACK',    lag:1, xcorr:-0.06101},
+      {leader:'OXYGEN_SHAKE', follower:'SNACKPACK',    lag:1, xcorr:-0.05850},
+      {leader:'SNACKPACK',    follower:'UV_VISOR',     lag:1, xcorr:-0.05840},
+      {leader:'SNACKPACK',    follower:'GALAXY_SOUNDS',lag:1, xcorr:-0.05632},
+      {leader:'SNACKPACK',    follower:'TRANSLATOR',   lag:1, xcorr:-0.05565},
+      {leader:'GALAXY_SOUNDS',follower:'SNACKPACK',    lag:1, xcorr:-0.05484},
+      {leader:'SNACKPACK',    follower:'PANEL',        lag:1, xcorr:-0.05059},
+    ],
+    leaderScores: {
+      PEBBLES:      {XL:0.05516,M:0.04797,XS:0.04469,S:0.03879,L:0.03501},
+      SNACKPACK:    {PISTACHIO:0.06511,STRAWBERRY:0.06032,RASPBERRY:0.05840,VANILLA:0.05130,CHOCOLATE:0.04698},
+      ROBOT:        {MOPPING:0.05751,LAUNDRY:0.04144,VACUUMING:0.03888,IRONING:0.03707,DISHES:0.03705},
+      MICROCHIP:    {OVAL:0.05098,TRIANGLE:0.04950,CIRCLE:0.04596,SQUARE:0.03840,RECTANGLE:0.03713},
+      TRANSLATOR:   {GRAY:0.05407,BLACK:0.05381,BLUE:0.05076,MIST:0.04380,CHARCOAL:0.03864},
+      SLEEP_POD:    {WOOL:0.05911,COTTON:0.04472,SUEDE:0.04035,NYLON:0.03829,POLYESTER:0.03301},
+      OXYGEN_SHAKE: {BREATH:0.05639,GARLIC:0.05621,MINT:0.04342,CHOCOLATE:0.03925},
+      PANEL:        {'1X2':0.06068,'4X4':0.04814,'2X4':0.04525,'1X4':0.04437,'2X2':0.04251},
+      GALAXY_SOUNDS:{MATTER:0.05144,RINGS:0.05100,FLAMES:0.04815,WINDS:0.04682,HOLES:0.03567},
+      UV_VISOR:     {RED:0.04694,AMBER:0.04365,MAGENTA:0.04202,ORANGE:0.04117,YELLOW:0.04107},
+    }
+  }
+};
+
+// ════════════════════════════════════════════════════════════════════
+// TAB SWITCHING
+// ════════════════════════════════════════════════════════════════════
+function switchTab(id) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════════════
+function pvalClass(p) {
+  if (p < 0.01) return 'sig';
+  if (p < 0.05) return 'ok';
+  return 'weak';
+}
+function pvalLabel(p) {
+  if (p < 0.001) return '*** p≈0';
+  if (p < 0.01)  return `** p=${p.toFixed(4)}`;
+  if (p < 0.05)  return `* p=${p.toFixed(4)}`;
+  return `p=${p.toFixed(4)} (n.s.)`;
+}
+function r2Color(r2) {
+  if (r2 > 0.99) return 'var(--accent4)';
+  if (r2 > 0.90) return 'var(--accent2)';
+  if (r2 > 0.70) return 'var(--accent)';
+  return 'var(--text2)';
+}
+function barColor(r2) {
+  if (r2 > 0.99) return 'linear-gradient(90deg,#ffd700,#ffaa00)';
+  if (r2 > 0.90) return 'linear-gradient(90deg,#00ff88,#00cc66)';
+  if (r2 > 0.70) return 'linear-gradient(90deg,#00d4ff,#0088cc)';
+  return 'linear-gradient(90deg,#4a6278,#2d4a60)';
+}
+function rankBadge(i) {
+  if(i===0) return '<span class="badge gold">#1</span>';
+  if(i===1) return '<span class="badge silver">#2</span>';
+  if(i===2) return '<span class="badge bronze">#3</span>';
+  return `<span class="badge muted">#${i+1}</span>`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// BUILD RANKING TABLE
+// ════════════════════════════════════════════════════════════════════
+function buildRanking() {
+  const tbody = document.getElementById('ranking-body');
+  DATA.ranking.forEach((row, i) => {
+    const cls = i===0?'top1':i===1?'top2':i===2?'top3':'';
+    const pvcls = pvalClass(row.adf_p);
+    tbody.innerHTML += `
+      <tr class="${cls}">
+        <td>${rankBadge(i)}</td>
+        <td style="font-family:var(--mono);color:var(--text);font-size:12px">${row.group}</td>
+        <td>
+          <div class="bar-wrap">
+            <div class="bar-track" style="width:100px">
+              <div class="bar-fill" style="width:${(row.score*100).toFixed(1)}%;background:${barColor(row.score)}"></div>
+            </div>
+            <span style="font-family:var(--mono);font-size:10px;color:var(--text2)">${row.score.toFixed(4)}</span>
+          </div>
+        </td>
+        <td style="color:${r2Color(row.r2)};font-family:var(--mono)">${row.r2.toFixed(6)}</td>
+        <td style="font-family:var(--mono);color:var(--text2)">${row.basket_std.toFixed(4)}</td>
+        <td><span class="pval ${pvcls}"><span class="dot"></span>${pvalLabel(row.adf_p)}</span></td>
+        <td style="font-family:var(--mono);color:var(--text2)">${row.cov.toFixed(4)}%</td>
+        <td>${row.basket_std < 10 ? '<span class="badge gold">IRON LAW</span>' : row.r2 > 0.90 ? '<span class="badge green">STRONG</span>' : row.r2 > 0.70 ? '<span class="badge silver">MODERATE</span>' : '<span class="badge muted">WEAK</span>'}</td>
+      </tr>`;
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// BUILD PHASE 1 PANELS
+// ════════════════════════════════════════════════════════════════════
+function buildPhase1() {
+  const btns  = document.getElementById('p1-grp-btns');
+  const panels = document.getElementById('p1-group-panels');
+  const groups = Object.keys(DATA.phase1);
+
+  groups.forEach((grp, idx) => {
+    const d = DATA.phase1[grp];
+    const btn = document.createElement('button');
+    btn.className = 'group-btn' + (idx===0?' active':'');
+    btn.textContent = grp.replace('_',' ');
+    btn.onclick = () => {
+      document.querySelectorAll('#p1-grp-btns .group-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#p1-group-panels .group-detail').forEach(p=>p.classList.remove('active'));
+      document.getElementById('p1-'+grp).classList.add('active');
+    };
+    btns.appendChild(btn);
+
+    const maxVol = Math.max(...Object.values(d.vols));
+    const volBars = Object.entries(d.vols).map(([name, vol]) => {
+      const pct = (vol/maxVol*100).toFixed(1);
+      const col = vol < maxVol*0.5 ? 'var(--accent4)' : vol > maxVol*0.8 ? 'var(--warn)' : 'var(--accent)';
+      return `<div class="vol-row">
+        <div class="vol-name">${name}</div>
+        <div class="vol-bar"><div class="vol-fill" style="width:${pct}%;background:${col}"></div></div>
+        <div class="vol-val">${vol.toFixed(0)}</div>
+      </div>`;
+    }).join('');
+
+    const pairsHtml = d.pairs.map((p,pi) => {
+      const pvc = pvalClass(p.adf_p);
+      return `<tr ${pi===0?'style="background:rgba(0,212,255,.04)"':''}>
+        <td>${pi===0?'<span class="badge silver">BEST</span>':''}</td>
+        <td>${p.a} − ${p.beta>0?'+':''}<span style="color:var(--accent)">${Math.abs(p.beta).toFixed(4)}</span> × ${p.b}</td>
+        <td><span class="pval ${pvc}"><span class="dot"></span>${p.adf_p.toFixed(6)}</span></td>
+        <td style="color:var(--text2)">${p.hl ? p.hl.toFixed(0)+' ticks' : 'n/a'}</td>
+        <td style="color:var(--text2)">${p.spread_std.toFixed(2)}</td>
+      </tr>`;
+    }).join('');
+
+    const basketColor = d.basket.std < 5 ? 'var(--accent4)' : d.basket.std < 100 ? 'var(--accent2)' : 'var(--text2)';
+    const bpvc = pvalClass(d.basket.adf_p);
+
+    panels.innerHTML += `
+      <div id="p1-${grp}" class="group-detail ${idx===0?'active':''}">
+        <div class="grid-2" style="margin-bottom:16px">
+          <div class="card">
+            <div class="card-title"><div class="dot"></div>Group Stats</div>
+            <div class="stat-row"><span class="stat-label">Ticks (sampled)</span><span class="stat-val">${d.n_ticks.toLocaleString()}</span></div>
+            <div class="stat-row"><span class="stat-label">Avg intra-group corr</span><span class="stat-val ${d.avg_corr > 0.3 ? 'up' : 'down'}">${d.avg_corr.toFixed(4)}</span></div>
+            <div class="stat-row"><span class="stat-label">Basket sum mean</span><span class="stat-val">${d.basket.mean.toFixed(1)}</span></div>
+            <div class="stat-row"><span class="stat-label">Basket sum std</span><span class="stat-val" style="color:${basketColor}">${d.basket.std.toFixed(4)}</span></div>
+            <div class="stat-row"><span class="stat-label">Basket ADF p-value</span>
+              <span class="pval ${bpvc}" style="font-size:11px"><span class="dot"></span>${d.basket.adf_p < 0.0001 ? '≈ 0.000000' : d.basket.adf_p.toFixed(8)}</span>
+            </div>
+            <div class="vol-grid" style="margin-top:16px">
+              <div style="font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Price Volatility by Asset</div>
+              ${volBars}
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title"><div class="dot"></div>Top-3 Cointegrated Pairs (by ADF p)</div>
+            <table class="pair-table">
+              <thead><tr><th></th><th>Spread Formula</th><th>ADF p-value</th><th>Half-Life</th><th>Spread σ</th></tr></thead>
+              <tbody>${pairsHtml}</tbody>
+            </table>
+            ${d.basket.std < 5 ? `
+            <div style="margin-top:14px;padding:10px 14px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:4px">
+              <div style="font-family:var(--mono);font-size:10px;color:var(--accent4);font-weight:700">⚡ CONSTANT-SUM DETECTED</div>
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text2);margin-top:4px">Basket σ = ${d.basket.std.toFixed(4)} — this is a deterministic pricing constraint, not statistical correlation.</div>
+            </div>` : ''}
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// BUILD PHASE 3 PANELS
+// ════════════════════════════════════════════════════════════════════
+function buildPhase3() {
+  const btns   = document.getElementById('p3-grp-btns');
+  const panels = document.getElementById('p3-group-panels');
+  const groups = Object.keys(DATA.phase3);
+
+  groups.forEach((grp, idx) => {
+    const d = DATA.phase3[grp];
+    const btn = document.createElement('button');
+    btn.className = 'group-btn' + (idx===0?' active':'');
+    btn.textContent = grp.replace('_',' ');
+    btn.onclick = () => {
+      document.querySelectorAll('#p3-grp-btns .group-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('#p3-group-panels .group-detail').forEach(p=>p.classList.remove('active'));
+      document.getElementById('p3-'+grp).classList.add('active');
+    };
+    btns.appendChild(btn);
+
+    const lowVolHtml = Object.entries(d.low_vol).map(([name, vol]) =>
+      `<span class="badge gold">${name} σ=${vol.toFixed(0)}</span> `
+    ).join('') || '<span style="color:var(--text3);font-family:var(--mono);font-size:10px">None detected</span>';
+
+    const r2Pct = (d.best_r2 * 100).toFixed(4);
+    const r2Bar = `<div class="bar-wrap" style="margin:12px 0">
+      <div class="bar-track" style="flex:1;height:10px">
+        <div class="bar-fill" style="width:${r2Pct}%;background:${barColor(d.best_r2)}"></div>
+      </div>
+      <span style="font-family:var(--mono);font-size:12px;color:${r2Color(d.best_r2)};margin-left:8px">${d.best_r2.toFixed(8)}</span>
+    </div>`;
+
+    const formattedFormula = d.formula
+      .replace(/([+-]\d+\.\d+)×/g, (m,coef) => `<span class="coef">${coef}</span>×`)
+      .replace(/^(\w+ = )([+-]?\d+\.\d+)/, (m,lhs,c) => `${lhs}<span class="const-val">${c}</span>`);
+
+    panels.innerHTML += `
+      <div id="p3-${grp}" class="group-detail ${idx===0?'active':''}">
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-title"><div class="dot"></div>Best OLS Model (4-predictor)</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:4px;letter-spacing:.1em;text-transform:uppercase">R² Score</div>
+            ${r2Bar}
+            <div class="formula">${formattedFormula}</div>
+            <div class="stat-row" style="margin-top:8px"><span class="stat-label">Residual std (σ)</span><span class="stat-val hi">${d.resid_std.toFixed(4)}</span></div>
+            <div class="stat-row"><span class="stat-label">Basket sum CoV</span><span class="stat-val" style="color:${d.cov < 0.01 ? 'var(--accent4)' : 'var(--text2)'}">${d.cov.toFixed(6)}%</span></div>
+          </div>
+          <div class="card">
+            <div class="card-title"><div class="dot"></div>Volatility Anomaly Detection</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:10px">Assets with σ more than 1 std below group mean:</div>
+            <div style="margin-bottom:16px">${lowVolHtml}</div>
+            <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:16px;margin-bottom:8px;letter-spacing:.1em;text-transform:uppercase">Signal Assessment</div>
+            ${d.best_r2 > 0.99 ? `
+              <div style="padding:10px 14px;background:rgba(255,215,0,.06);border:1px solid rgba(255,215,0,.2);border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--accent4)">
+                ⚡ DETERMINISTIC: R² = ${d.best_r2.toFixed(6)} — near-perfect pricing equation
+              </div>` :
+            d.best_r2 > 0.90 ? `
+              <div style="padding:10px 14px;background:rgba(0,255,136,.05);border:1px solid rgba(0,255,136,.15);border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--accent2)">
+                ✓ STRONG: R² = ${d.best_r2.toFixed(6)} — reliable regression arb signal
+              </div>` :
+            d.best_r2 > 0.70 ? `
+              <div style="padding:10px 14px;background:rgba(0,212,255,.05);border:1px solid rgba(0,212,255,.15);border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--accent)">
+                ~ MODERATE: R² = ${d.best_r2.toFixed(6)} — tradeable but wider residuals
+              </div>` : `
+              <div style="padding:10px 14px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:4px;font-family:var(--mono);font-size:11px;color:var(--text3)">
+                ✗ WEAK: R² = ${d.best_r2.toFixed(6)} — insufficient for reliable arb
+              </div>`}
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// BUILD PHASE 2 (LEAD-LAG)
+// ════════════════════════════════════════════════════════════════════
+function buildPhase2() {
+  // Within-group
+  const within = document.getElementById('ll-within-list');
+  DATA.phase2.within.forEach(r => {
+    const str = Math.abs(r.xcorr);
+    within.innerHTML += `
+      <div class="xcorr-row">
+        <div class="xcorr-leader">${r.group.replace('_SOUNDS','').replace('_SHAKE','')}</div>
+        <div style="display:flex;flex-direction:column;flex:1;gap:3px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text)">
+            <span style="color:var(--accent)">${r.leader}</span>
+            <span style="color:var(--text3);margin:0 6px">→</span>
+            <span>${r.follower}</span>
+            <span style="color:var(--text3);margin-left:8px">lag=${r.lag}t</span>
+            <span style="color:var(--text2);margin-left:8px">${r.xcorr.toFixed(5)}</span>
+          </div>
+          <div class="bar-track" style="height:4px">
+            <div class="bar-fill" style="width:${(str/0.025*100).toFixed(0)}%;background:var(--accent);opacity:.6"></div>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  // Cross-category
+  const cross = document.getElementById('ll-cross-list');
+  DATA.phase2.cross.forEach(r => {
+    const str = Math.abs(r.xcorr);
+    cross.innerHTML += `
+      <div class="xcorr-row">
+        <div style="display:flex;flex-direction:column;flex:1;gap:3px">
+          <div style="font-family:var(--mono);font-size:10px;color:var(--text)">
+            <span style="color:var(--accent2)">${r.leader}</span>
+            <span style="color:var(--text3);margin:0 6px">→</span>
+            <span>${r.follower}</span>
+            <span style="color:var(--text3);margin-left:8px">L=${r.lag}</span>
+            <span style="color:${str>0.06?'var(--accent2)':'var(--text2)'};margin-left:8px">${r.xcorr.toFixed(5)}</span>
+          </div>
+          <div class="bar-track" style="height:4px">
+            <div class="bar-fill" style="width:${(str/0.075*100).toFixed(0)}%;background:${str>0.06?'var(--accent2)':'var(--accent)'}"></div>
+          </div>
+        </div>
+      </div>`;
+  });
+
+  // Leader scores
+  const ls = document.getElementById('leader-score-list');
+  const allGroups = Object.keys(DATA.phase2.leaderScores);
+  allGroups.forEach(grp => {
+    const scores = DATA.phase2.leaderScores[grp];
+    const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+    const maxScore = sorted[0][1];
+    ls.innerHTML += `
+      <div style="margin-bottom:14px">
+        <div style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-bottom:6px;letter-spacing:.08em;text-transform:uppercase">${grp}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px">
+          ${sorted.map(([name, score], i) => `
+            <div style="display:flex;align-items:center;gap:6px;min-width:160px">
+              <span style="font-family:var(--mono);font-size:9px;width:80px;color:${i===0?'var(--accent)':'var(--text2)'};overflow:hidden;text-overflow:ellipsis">${name}</span>
+              <div class="bar-track" style="width:80px;flex:none">
+                <div class="bar-fill" style="width:${(score/maxScore*100).toFixed(0)}%;background:${i===0?'var(--accent)':'rgba(255,255,255,.2)'}"></div>
+              </div>
+              <span style="font-family:var(--mono);font-size:9px;color:var(--text3)">${score.toFixed(4)}</span>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════════
+buildRanking();
+buildPhase1();
+buildPhase3();
+buildPhase2();
+</script>
+</body>
+</html>
