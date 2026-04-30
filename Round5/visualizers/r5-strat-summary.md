@@ -1,57 +1,81 @@
-# Estrategia de Trading: Enfoque Híbrido Intra-Cesta (Round 5)
+# Trading Strategy: Intra-Basket Hybrid Approach (Round 5)
 
-Para maximizar el número de activos operados respetando el límite estricto de ±10 posiciones —y basándonos en las evidencias empíricas del análisis y el documento *Intra-Basket Reversion*—, descartamos un enfoque único para todo. Obligar a todos los activos a operarse como "pares puros" o con medias estáticas genera falsos positivos y destruye el alpha.
-
-La estrategia maestra es un **Enfoque Híbrido Intra-Cesta** (*Intra-Basket Strategy*). Combinaremos arbitraje de identidad pasivo, pares puros dinámicos y rotaciones de 3 o 4 patas (baskets), dependiendo de la estructura matemática inherente de cada categoría. 
-
-A continuación, se detallan los 4 pilares para implementar esta estrategia en producción.
+This document outlines the master execution plan for the Round 5 simulated market. By moving away from static means and embracing a **Dynamic Causal Model**, we aim to maximize alpha while strictly respecting the $\pm 10$ position limit per asset.
 
 ---
 
-## Pilar 1: Construcción Matemática del Spread
+## I. Strategic Foundation
 
-Para poder comparar el riesgo entre un par tradicional (2 activos) y una cesta compleja (4 activos), estandarizaremos la formulación del spread:
+The market is non-uniform, consisting of four distinct structural behaviors. Our strategy replaces "one-size-fits-all" pairs trading with a **Hybrid Intra-Basket Approach**:
 
-*   **Pesos Normalizados (L1-Normalization):** Cada spread se define como una combinación lineal de precios ($s_t = w^T p_t$). Aplicaremos una normalización L1 para que la suma absoluta de los pesos sea siempre 1 ($\sum |w_i| = 1$). Esto garantiza que "1 unidad de spread" consuma exactamente 1 unidad de capacidad del inventario global, permitiendo una gestión de capital uniforme.
-*   **Z-Score Congelado (Formation-only Scaling):** La media ($\mu_F$) y la desviación estándar ($\sigma_F$) para normalizar el Z-Score se calculan únicamente con los datos históricos de formación (Días 2 y 3) y se dejan fijos para el Día 4. Actualizar la varianza en tiempo real enmascararía las desviaciones reales del mercado.
-
----
-
-## Pilar 2: El Motor de Fair Value Dinámico
-
-El análisis demostró que las medias estáticas fallan miserablemente debido a cambios de régimen (deriva estructural). Reemplazaremos la Media Móvil Simple por un modelo Dinámico Causal (similar a un filtro de Kalman de una dimensión):
-
-*   **Innovación Pre-Actualización:** En cada tick, el residuo que operamos es la diferencia entre el precio real del spread hoy y la predicción del *Fair Value* calculada ayer ($u_t = s_t - m_{t|t-1}$). Esto evita introducir un sesgo predictivo (*look-ahead bias*).
-*   **Ajuste por Factor $K$:** Una vez capturado el residuo, actualizamos el *Fair Value* para el siguiente tick sumándole una fracción de la desviación actual: $m_{t+1} = m_t + K(s_t - m_t)$. El parámetro $K$ dicta qué tan rápido se adapta el modelo al nuevo régimen (generalmente entre 0.001 y 0.005).
+1.  **Strict Identity Arbitrage:** Deterministic mathematical relationships with instant reversion but razor-thin margins.
+2.  **Compact Relationship Spaces:** Strongly coupled groups with high variance but tight co-movement.
+3.  **Secondary Level Relationships:** Long-term block movements with significant short-term independent noise.
+4.  **Random Walks (Noise):** Unstructured assets that must be blacklisted to avoid inventory traps.
 
 ---
 
-## Pilar 3: El Universo Operable (Asignación por Categorías)
+## II. Mathematical Framework
 
-Basados en los resultados del análisis, dividiremos el mercado de 50 activos en las siguientes sub-estrategias:
+### 1. Spread Construction & L1-Normalization
+To compare risk across different basket sizes (e.g., a 2-asset pair vs. a 4-asset basket), we use **L1-Normalization**:
+$$\sum |w_i| = 1$$
+This ensures that "1 unit of spread" consistently consumes exactly 1 unit of global inventory capacity, regardless of the number of legs involved.
 
-### Categoría 1: Cotización Pasiva de Identidad (Pebbles)
-*   **Contexto:** La suma exacta de los 5 Pebbles (XS+S+M+L+XL) es igual a 50,000. Sin embargo, el costo de cruzar el *bid-ask spread* de las 5 patas a la vez destruye el margen de beneficio.
-*   **Ejecución:** No operaremos la cesta entera. Usaremos la identidad para calcular el "precio justo" de un solo Pebble asumiendo que los otros 4 están en su valor correcto. Usaremos esto exclusivamente para poner órdenes límite pasivas (*Market Making*) esperando que el mercado nos cruce.
-
-### Categoría 2: El Núcleo Multi-Spread (Snackpack)
-*   **Contexto:** Es la categoría con mayor compresión de precios y reversión.
-*   **Ejecución:** Operaremos 4 spreads superpuestos simultáneamente: Chocolate/Vanilla (dinámico), Pistachio/Strawberry (dinámico), Raspberry/Strawberry (dinámico) y una cesta de 4 patas (Choc+Van-Pist-Rasp) usando un modelo de tendencia. Al haber activos solapados, sumaremos los objetivos de posición de cada spread antes de enviar la orden final al mercado.
-
-### Categoría 3: Cestas Secundarias Dinámicas (Microchips, Sleep Pods, Translators, Shakes)
-*   **Contexto:** Tienen correlaciones de nivel, pero menos compresión de cambios de precio.
-*   **Ejecución:** Usaremos el *Fair Value* dinámico ($K$) operando combinaciones específicas comprobadas. Por ejemplo, en Microchips operaremos una cesta de 4 patas (`MICRO_LVL4`) y usaremos el par Oval/Triangle solo como confirmación de señal. En Shakes, ejecutaremos una rotación de 4 patas (`OXY_ECG`) con un $K$ de 0.002.
-
-### Categoría 4: Lista Negra y Observación (UV Visors, Panels, Robots, Galaxy)
-*   **Contexto:** Mostraron falsos positivos, nula cointegración real, o dinámicas de trading desastrosas fuera de la muestra.
-*   **Ejecución:** No se operan. Se excluyen del sistema de manera estricta para evitar exposición direccional injustificada.
+### 2. Dynamic Fair Value (Kalman-Style Filter)
+Static means lead to "false positives" during regime shifts. We employ a **Dynamic Fair Value ($m_t$)** updated at every tick:
+* **Pre-Update Innovation:** $u_t = s_t - m_{t|t-1}$ (Operating on the residual between current price and yesterday's prediction).
+* **Adjustment Factor ($K$):** $m_{t+1} = m_t + K(s_t - m_t)$.
+* The parameter $K$ (ranging from $0.001$ to $0.005$) determines the adaptation speed to new structural drifts.
 
 ---
 
-## Pilar 4: Reglas de Entrada, Salida y Netting (Gestión del Límite)
+## III. Tactical Execution by Category
 
-Al tener cestas con múltiples patas ponderadas fraccionalmente, el enrutamiento (*routing*) de órdenes debe ser estricto para respetar el límite de ±10 unidades por activo:
+### 1. SNACKPACK (Primary Profit Engine)
+* **Behavior:** Most profitable category with the highest mathematical compression.
+* **Execution:** Overlapping Dynamic Pairs.
+    * **Chocolate vs. Vanilla** ($K  pprox 0.002 - 0.005$)
+    * **Pistachio vs. Strawberry** ($K  pprox 0.002 - 0.005$)
+    * **Raspberry vs. Strawberry** ($K  pprox 0.002 - 0.005$)
+* **Netting Rule:** Sum position intentions for overlapping assets (e.g., Strawberry) before routing orders to stay within $\pm 10$ limits.
+* **Entry:** Z-Score $> 1.5$ to $2.0$.
 
-*   **Disparadores (Triggers):** Entramos al mercado agresivamente (cruzando el spread) cuando el Z-Score de la innovación pre-actualización supera el umbral óptimo (por ejemplo, > ±1.5 o > ±2.0, según el spread). Salimos aplanando la posición cuando el spread revierte cerca de su media ($|Z| < 0.5$).
-*   **Conversión a Enteros:** Traducimos nuestra convicción direccional (el Z-Score) a un tamaño de posición objetivo en "unidades de spread". Como el spread está L1-normalizado, multiplicamos la unidad de spread objetivo por los pesos $w_i$ de cada activo de la cesta, y redondeamos al número entero más cercano.
-*   **Filtro de Límite (Limit Breach Protection):** Antes de enviar el bloque de órdenes de una cesta, el sistema suma la posición teórica requerida a la posición actual. Si cualquiera de las patas del spread excede la restricción de ±10, se recorta (*clip*) la orden de esa pata al máximo disponible, y se reescalan las órdenes de las demás patas proporcionalmente para mantener la neutralidad de la cobertura al máximo posible.
+### 2. MICROCHIPS (Structural Rotation)
+* **Behavior:** Strong long-term coupling but high daily noise. Static $ eta$ is ineffective here.
+* **Execution:** 4-Leg Basket (`MICRO_LVL4`: Circle, Oval, Rectangle, Triangle).
+* **Entry:** Conservative approach; Z-Score $> 2.0$.
+* **Note:** Use the Oval/Triangle pair only as a confirmation filter, not a primary trigger.
+
+### 3. SLEEP PODS & TRANSLATORS (Tactical Secondary Pairs)
+* **Behavior:** Slower reversion cycles. Noise takes longer to dissipate.
+* **Execution:** Slow Dynamic Models ($K = 0.002$).
+    * **Sleep Pods:** Polyester/Cotton and Suede/Polyester/Cotton combination.
+    * **Translators:** Charcoal/Void_Blue and the 4-leg `TRANS_SEG` basket.
+* **Limit Management:** Fractional entry scaling (e.g., blocks of 3-4 units) to avoid tying up inventory in slow-moving trades.
+
+### 4. OXYGEN SHAKES (Clean Rotation)
+* **Behavior:** Statistical signatures are clearer in 4-asset combinations than in pure pairs.
+* **Execution:** `OXY_ECG` Basket (Morning Breath, Evening Breath, Chocolate, Garlic).
+* **Entry:** Z-Score $> 2.0$ to ensure the move covers the cost of crossing the bid-ask spread.
+
+### 5. PEBBLES (Passive Market Making)
+* **Behavior:** Programmed identity where $\sum 	ext{Pebbles} = 50,000$.
+* **Execution:** **Passive Liquidity Provision only.**
+    * **Do Not Cross the Spread:** The cost of "taking" liquidity on 5 legs is $ pprox 30x$ the standard deviation of the identity.
+    * **Tactic:** Calculate Fair Value for one Pebble ($50,000 - \sum 	ext{Others}$) and place limit orders. Let market noise fill your orders at the "fair" price.
+
+### 6. BLACKLIST (UV Visors, Panels, Robots, Galaxy)
+* **Status:** **Strictly Excluded.**
+* **Reasoning:** Historical analysis shows zero real cointegration or high rates of false positives. Trading these assets creates unjustified directional exposure and wastes inventory.
+
+---
+
+## IV. Risk & Limit Management
+
+* **Formation-only Scaling:** $\mu$ and $\sigma$ for Z-Scores are frozen based on Day 2 & 3 data to prevent "volatility masking" during Day 4.
+* **Limit Breach Protection:** 1. Calculate target position: $Z 	ext{ conviction} 
+ightarrow 	ext{Spread Units} 	imes w_i$.
+    2. Check against current inventory ($\pm 10$).
+    3. If a breach is detected, **Clip** the offending leg and **Rescale** the other legs proportionally to maintain delta-neutrality.
+* **Exit Strategy:** Flatten positions when the pre-update innovation Z-score returns to $|Z| < 0.5$.
